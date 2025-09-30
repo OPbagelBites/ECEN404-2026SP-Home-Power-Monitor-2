@@ -47,7 +47,7 @@ if __name__ == '__main__':
         run_training_job()
 
 # # On macOS/Linux
-# source ven/bin/activate
+# source venv/bin/activate
 
 # python main.py api 
 
