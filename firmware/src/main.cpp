@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <vector>
 #include <map>
 #include "config.h"
@@ -7,12 +8,15 @@
 #include "telemetry.h"
 #include "utils.h"
 
+// Store the most recent event so telemetry.cpp can include it in the JSON
+StaticJsonDocument<96> latest_event;
+
 // ---------- Aliases from config ----------
-static constexpr float     FS            = CFG_FS_HZ;
-static constexpr uint32_t  N             = CFG_N_SAMPLES;
-static constexpr float     F0            = CFG_F0_HZ;
-static constexpr const char* WINDOW_NAME = CFG_WINDOW_NAME;
-static constexpr float     FRAME_PERIOD  = CFG_FRAME_PERIOD_S * 1000.0f; // ms
+static constexpr float        FS            = CFG_FS_HZ;
+static constexpr uint32_t     N             = CFG_N_SAMPLES;
+static constexpr float        F0            = CFG_F0_HZ;
+static constexpr const char*  WINDOW_NAME   = CFG_WINDOW_NAME;
+static constexpr float        FRAME_PERIOD  = CFG_FRAME_PERIOD_S * 1000.0f; // ms
 
 // Device pattern (ON↔OFF)
 static constexpr float ON_DURATION_S   = CFG_ON_DURATION_S;
@@ -108,13 +112,20 @@ void loop() {
   const float crest_i = dsp::crest_factor(i.data(), N);
   const float form_i  = dsp::form_factor(i.data(), N);
 
-  // ---- Deltas (for events downstream) ----
+  // ---- Deltas ----
   if (isnan(prev_irms)) prev_irms = Irms;
   if (isnan(prev_p))    prev_p    = P;
   float d_irms = Irms - prev_irms;
   float d_p    = P    - prev_p;
   prev_irms = Irms;
   prev_p    = P;
+
+  // ---- Event detection (populate latest_event on big current step) ----
+  latest_event.clear();
+  if (fabsf(d_irms) > 1.0f) {        // simple threshold; tweak as needed
+    latest_event["type"] = (d_irms > 0) ? "on" : "off";
+    latest_event["t_ms"] = (uint64_t)millis();
+  }
 
   // ---- Build FrameCore + JSON ----
   FrameCore core{
@@ -131,6 +142,11 @@ void loop() {
     CFG_FW_TAG, CFG_CAL_ID
   );
   Serial.println(json);
+
+  // Optional: human-readable summary for the demo
+  Serial.printf("t=%llu ms  state=%s  Vrms=%.1f  Irms=%.3f  P=%.1f W  PF=%.3f  THD_i=%.3f  phi=%.1f°%s",
+                (unsigned long long)t_ms, state_str, Vrms, Irms, P, PF, THD_i, phi_deg,
+                (latest_event.isNull() ? "\n" : "  <-- EVENT\n"));
 
   frame_id++;
 

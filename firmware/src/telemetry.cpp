@@ -1,6 +1,9 @@
 #include "telemetry.h"
 #include <ArduinoJson.h>
 
+// Bring in the latest_event built in main.cpp
+extern StaticJsonDocument<96> latest_event;
+
 // Silence the one deprecation warning for StaticJsonDocument in this file only
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -47,7 +50,7 @@ String pack_frame_json(
   doc["thd_i"] = roundf(c.thd_i * 1000.0f) / 1000.0f;
   doc["thd_v"] = roundf(c.thd_v * 1000.0f) / 1000.0f;
 
-  // New, non-deprecated way to create nested object
+  // h_i map (non-deprecated nested object)
   JsonObject hobj = doc["h_i"].to<JsonObject>();
   for (auto& kv : h_i) {
     hobj[kv.first] = roundf(kv.second * 1000.0f) / 1000.0f;
@@ -62,7 +65,11 @@ String pack_frame_json(
   doc["d_irms"] = roundf(d_irms * 1000.0f) / 1000.0f;
   doc["d_p"]    = roundf(d_p    * 1000.0f) / 1000.0f;
 
-  doc["events"].to<JsonArray>();  // empty placeholder
+  // Events array; include the most recent one if present
+  JsonArray events = doc["events"].to<JsonArray>();
+  if (!latest_event.isNull()) {
+    events.add(latest_event.as<JsonObject>());
+  }
 
   doc["fft_ok"]  = fft_ok;
   doc["sync_ok"] = sync_ok;
