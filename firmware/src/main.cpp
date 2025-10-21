@@ -64,7 +64,7 @@ void loop() {
 
 #if TEST_MODE
   // Generate synthetic V/I like your sandbox
-  signals::vi_test_signals(FS, N, V_RMS_TARGET, irms_target, F0, -PHASE_DEG /*- for lag*/, h2_amp, v, i);
+  signals::vi_test_signals(FS, N, V_RMS_TARGET, irms_target, F0, PHASE_DEG, h2_amp, v, i);
 #else
   // TODO: Replace with dual-channel ADC fill for v[] and i[] (with bias removal & scaling)
 #endif

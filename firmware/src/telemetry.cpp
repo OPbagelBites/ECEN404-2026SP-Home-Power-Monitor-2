@@ -1,6 +1,12 @@
 #include "telemetry.h"
 #include <ArduinoJson.h>
 
+// Silence the one deprecation warning for StaticJsonDocument in this file only
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 String pack_frame_json(
   uint64_t t_ms, uint32_t frame_id, float fs, uint32_t N, const char* window_name, float f0_hz,
   const FrameCore& c,
@@ -10,7 +16,7 @@ String pack_frame_json(
   bool fft_ok, bool sync_ok, bool adc_ok,
   const char* fw, const char* cal_id
 ) {
-  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<1024> doc;  // OK in v7, just marked deprecated
 
   doc["schema"] = 1;
   doc["delta_convention"] = "current_minus_previous";
@@ -19,7 +25,7 @@ String pack_frame_json(
   doc["t"] = t_ms;
   doc["frame_id"] = frame_id;
   doc["fs"] = fs;
-  doc["N"] = N;
+  doc["N"]  = N;
   doc["window"] = window_name;
   doc["freq_hz"] = roundf(f0_hz * 1000.0f) / 1000.0f;
 
@@ -41,12 +47,10 @@ String pack_frame_json(
   doc["thd_i"] = roundf(c.thd_i * 1000.0f) / 1000.0f;
   doc["thd_v"] = roundf(c.thd_v * 1000.0f) / 1000.0f;
 
-  // h_i map
-  {
-    JsonObject hobj = doc.createNestedObject("h_i");
-    for (auto& kv : h_i) {
-      hobj[kv.first] = roundf(kv.second * 1000.0f) / 1000.0f;
-    }
+  // New, non-deprecated way to create nested object
+  JsonObject hobj = doc["h_i"].to<JsonObject>();
+  for (auto& kv : h_i) {
+    hobj[kv.first] = roundf(kv.second * 1000.0f) / 1000.0f;
   }
 
   doc["odd_sum_i"]  = roundf(c.odd_sum_i  * 1000.0f) / 1000.0f;
@@ -58,7 +62,7 @@ String pack_frame_json(
   doc["d_irms"] = roundf(d_irms * 1000.0f) / 1000.0f;
   doc["d_p"]    = roundf(d_p    * 1000.0f) / 1000.0f;
 
-  doc["events"] = JsonArray(); // placeholder (empty)
+  doc["events"].to<JsonArray>();  // empty placeholder
 
   doc["fft_ok"]  = fft_ok;
   doc["sync_ok"] = sync_ok;
@@ -71,3 +75,7 @@ String pack_frame_json(
   serializeJson(doc, out);
   return out;
 }
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
