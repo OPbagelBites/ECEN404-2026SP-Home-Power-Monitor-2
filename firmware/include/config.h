@@ -30,5 +30,19 @@ static constexpr int   CFG_HARM_KMAX        = 5;           // up to 5th harmonic
 static constexpr float CFG_THDV_PLACEHOLDER = 0.01f;       // voltage THD in sim
 
 // ================== Telemetry / Meta ==================
-static constexpr char  CFG_FW_TAG[]  = "fw-esp-0.1.0";
+static constexpr char  CFG_FW_TAG[]  = "fw-esp-0-1-0";
 static constexpr char  CFG_CAL_ID[]  = "cal-default";
+
+// Firebase (replace these 2 with your project info)
+#define CFG_DEVICE_ID     "esp32-devkitc-01"
+#define CFG_FB_DB_URL     "https://home-power-monitor-752b7-default-rtdb.firebaseio.com"
+#define CFG_FB_AUTH       ""    // leave empty while rules allow open writes
+
+// WiFiManager access point details
+#define CFG_AP_NAME       "HomePower-Setup"
+#define CFG_AP_PASS       "power1234"
+
+// Network + push tuning
+#define CFG_PUSH_ENABLE   1           // 1=on, 0=off
+#define CFG_PUSH_EVERY_N  1           // push every frame (or 2/4 if you want to rate-limit)
+#define CFG_HTTP_TIMEOUT  4000        // ms

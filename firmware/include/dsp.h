@@ -1,4 +1,6 @@
-#pragma once
+#ifndef DSP_H
+#define DSP_H
+
 #include <Arduino.h>
 #include <vector>
 #include <map>
@@ -29,3 +31,5 @@ float thd_goertzel(const float* x_win, size_t N, float fs, float f0, const std::
 std::map<String, float> harmonic_ratios_goertzel(const float* x_win, size_t N, float fs, float f0, int kmax);
 
 } // namespace dsp
+
+#endif // DSP_H
