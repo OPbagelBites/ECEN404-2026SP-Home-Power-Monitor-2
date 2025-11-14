@@ -222,9 +222,8 @@ void loop() {
 
   Serial.printf(
     "t=%llu ms  state=%s  Vrms=%.1f  Irms=%.3f  P=%.1f W  PF=%.3f  THD_i=%.3f  phi=%.1f°%s",
-    static_cast<unsigned long long>(t_ms),
-    state_str,
-    Vrms, Irms, P, PF, THD_i, phi_deg,
+    (unsigned long long)t_ms,
+    state_str, Vrms, Irms, P, PF, THD_i, phi_deg,
     (latest_event.isNull() ? "\n" : "  <-- EVENT\n")
   );
 

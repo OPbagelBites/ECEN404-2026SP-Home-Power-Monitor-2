@@ -16,9 +16,9 @@ String pack_frame_json(
   const std::map<String, float>& h_i,
   const char* state,
   float d_irms, float d_p,
-  bool fft_ok = true, bool sync_ok = true, bool adc_ok = true,
-  const char* fw = "fw-esp-0.1.0",
-  const char* cal_id = "cal-default"
+  bool fft_ok=true, bool sync_ok=true, bool adc_ok=true,
+  const char* fw="fw-esp-0.1.0",
+  const char* cal_id="cal-default"         
 );
 
 #endif // TELEMETRY_H

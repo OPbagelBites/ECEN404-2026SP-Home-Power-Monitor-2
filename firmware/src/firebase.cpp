@@ -12,8 +12,8 @@
 #include <HTTPClient.h>
 #include <WiFiManager.h>   // tzapu/WiFiManager
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Optional config knobs expected from config.h (provide sane defaults if absent)
+// ─────────────────────────────────────────────────────────────
+// Optional config knobs (with defaults) expected from config.h
 
 #ifndef CFG_HTTP_TIMEOUT
   #define CFG_HTTP_TIMEOUT 5000
@@ -23,33 +23,20 @@
   #define CFG_PUSH_ENABLE 1
 #endif
 
-// If your RTDB requires auth, put a database secret or custom token here.
-// In config.h:  #define CFG_FB_AUTH "your_token"
-// Leave undefined or empty to omit the auth param.
 #ifndef CFG_FB_AUTH
   #define CFG_FB_AUTH ""
 #endif
 
-// Set to 1 to use client.setInsecure() (dev/demo).
-// In production, prefer a real root CA (CFG_FB_ROOT_CA_PEM).
 #ifndef CFG_USE_TLS_INSECURE
   #define CFG_USE_TLS_INSECURE 1
 #endif
 
-// If you want proper cert pinning, define CFG_FB_ROOT_CA_PEM in config.h:
-// static const char CFG_FB_ROOT_CA_PEM[] PROGMEM = R"PEM(
-// -----BEGIN CERTIFICATE-----
-// ...
-// -----END CERTIFICATE-----
-// )PEM";
-// Then set CFG_USE_TLS_INSECURE to 0.
 #ifdef CFG_FB_ROOT_CA_PEM
   #define HAS_FB_CA 1
 #else
   #define HAS_FB_CA 0
 #endif
 
-// Small retry budget for transient failures (5xx, timeouts).
 #ifndef CFG_HTTP_RETRIES
   #define CFG_HTTP_RETRIES 2
 #endif
@@ -62,29 +49,40 @@
   #define CFG_AP_PASS "changeme"
 #endif
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // Helpers
 
-static String build_url(const String& db_url,
-                        const String& device_id,
-                        const String& fw_tag,
-                        uint32_t frame_id)
+// RTDB disallows '.', '#', '$', '[', ']'
+static String sanitize_key(String s) {
+  s.replace(".", "_");
+  s.replace("#", "_");
+  s.replace("$", "_");
+  s.replace("[", "_");
+  s.replace("]", "_");
+  return s;
+}
+
+// Build the frames collection URL for POST (append)
+static String build_frames_url(const String& db_url,
+                               const String& device_id,
+                               const String& fw_tag)
 {
   // Normalize base URL (no trailing slash)
   String base = db_url;
   if (base.endsWith("/")) base.remove(base.length() - 1);
 
-  // /devices/<device_id>/streams/<fw_tag>/frames/<frame_id>.json
+  const String dev = sanitize_key(device_id);
+  const String tag = sanitize_key(fw_tag);
+
+  // /devices/<device_id>/streams/<fw_tag>/frames.json
   String u;
   u.reserve(base.length() + 64);
   u  = base;
   u += F("/devices/");
-  u += device_id;
+  u += dev;
   u += F("/streams/");
-  u += fw_tag;
-  u += F("/frames/");
-  u += String(frame_id);
-  u += F(".json?print=silent");
+  u += tag;
+  u += F("/frames.json?print=silent");
 
   // Optional auth
   if (String(CFG_FB_AUTH).length() > 0) {
@@ -98,13 +96,17 @@ static bool wifi_is_connected() {
   return WiFi.status() == WL_CONNECTED;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // Public API
 
 bool wifi_init() {
   WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);   // keep Wi-Fi awake for more reliable uploads
+
   WiFiManager wm;
-  // wm.resetSettings();  // ← add this
+  // If you ever need to forget saved Wi-Fi:
+  // wm.resetSettings();
+
   bool ok = wm.autoConnect(CFG_AP_NAME, CFG_AP_PASS);
   return ok && (WiFi.status() == WL_CONNECTED);
 }
@@ -121,13 +123,14 @@ bool fb_push_frame(const String& device_id,
 
   if (!wifi_is_connected()) return false;
 
-  // Expect these from config.h:
+  // Expect from config.h:
   //   #define CFG_FB_DB_URL "https://<project-id>-default-rtdb.firebaseio.com"
 #ifndef CFG_FB_DB_URL
   #error "CFG_FB_DB_URL must be defined in config.h"
 #endif
 
-  String url = build_url(String(CFG_FB_DB_URL), device_id, fw_tag, frame_id);
+  // Append-only URL (frames collection)
+  const String url = build_frames_url(String(CFG_FB_DB_URL), device_id, fw_tag);
 
   // Prepare TLS client
 #if defined(ARDUINO_ARCH_ESP32)
@@ -138,10 +141,10 @@ bool fb_push_frame(const String& device_id,
     #if HAS_FB_CA
       client.setCACert(CFG_FB_ROOT_CA_PEM);
     #else
-      // Fallback to insecure if no CA provided (not recommended for prod)
-      client.setInsecure();
+      client.setInsecure();  // fallback (OK for dev)
     #endif
   #endif
+
 #elif defined(ARDUINO_ARCH_ESP8266)
   BearSSL::WiFiClientSecure client;
   #if CFG_USE_TLS_INSECURE
@@ -153,12 +156,14 @@ bool fb_push_frame(const String& device_id,
       client.setInsecure();
     #endif
   #endif
+
 #else
   WiFiClient client; // non-TLS fallback (not recommended)
 #endif
 
   HTTPClient http;
   int attempt = 0;
+
   while (true) {
     if (!http.begin(client, url)) {
       http.end();
@@ -168,22 +173,26 @@ bool fb_push_frame(const String& device_id,
     http.setTimeout(CFG_HTTP_TIMEOUT);
     http.addHeader(F("Content-Type"), F("application/json"));
 
-    // PUT creates/replaces this frame node. (PATCH would also work.)
-    const int code = http.PUT(jsonPayload);
+    // POST → append new child under frames (unique push key)
+    const int code = http.POST(jsonPayload);
     http.end();
 
-    // Success
-    if (code >= 200 && code < 300) return true;
+    // Success (RTDB usually returns 200 or 204 on success, 200 with JSON body containing the name)
+    if (code >= 200 && code < 300) {
+      // Uncomment if you want to see successes in Serial:
+      // Serial.printf("[fb] POST ok: %d (frame_id=%lu)\n", code, (unsigned long)frame_id);
+      return true;
+    }
 
     // Unauthorized / forbidden → don't retry blindly
     if (code == 401 || code == 403) {
-      Serial.printf("[fb] auth error: HTTP %d (check CFG_FB_AUTH)\n", code);
+      Serial.printf("[fb] auth error: HTTP %d (check CFG_FB_AUTH / rules)\n", code);
       return false;
     }
 
     // If we've used up retries or it's a hard client error, bail
     if (attempt >= CFG_HTTP_RETRIES) {
-      Serial.printf("[fb] HTTP PUT failed: %d (url=%s)\n", code, url.c_str());
+      Serial.printf("[fb] HTTP POST failed: %d (url=%s)\n", code, url.c_str());
       return false;
     }
 
