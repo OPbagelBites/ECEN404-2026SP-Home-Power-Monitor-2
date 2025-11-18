@@ -1,0 +1,24 @@
+# Use the same modern Python as your local env / API image
+FROM python:3.11-slim
+
+# Basic, helpful env flags
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+WORKDIR /app
+
+# Install deps
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy your package code (no data by default; you can mount it)
+COPY src/ /app/src/
+
+# Ensure a writable models dir exists even if you don't mount one
+RUN mkdir -p /app/models
+
+# Run trainer as a module so we can append CLI args easily
+ENTRYPOINT ["python", "-m", "src.modeling.train"]
+# By default, no args; main.py will append --data_path / --model_output_path via `docker run ... -- ...`
+CMD []

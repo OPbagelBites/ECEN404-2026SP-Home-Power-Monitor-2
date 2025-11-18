@@ -1,0 +1,13 @@
+{
+  "Air Conditioner": 0.5,
+  "Compact Fluorescent Lamp": 0.5125,
+  "Fan": 0.5,
+  "Fridge": 0.5,
+  "Hairdryer": 0.5875,
+  "Heater": 0.5,
+  "Incandescent Light Bulb": 0.5,
+  "Laptop": 0.5,
+  "Microwave": 0.5,
+  "Vacuum": 0.5,
+  "Washing Machine": 0.5
+}

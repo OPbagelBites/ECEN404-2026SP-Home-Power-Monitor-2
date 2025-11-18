@@ -1,0 +1,20 @@
+FROM python:3.11-slim
+WORKDIR /app
+
+# Install deps
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy your package + api
+COPY src/ /app/src/
+COPY api.py .
+
+# (Optional) copy models if you want a baked-in default,
+# but your main.py already mounts ./models from host
+COPY models/ /app/models/
+
+# Make /app importable so "from src..." works
+ENV PYTHONPATH=/app
+
+# Serve Flask dev server (or use gunicorn in prod)
+CMD ["python", "api.py"]

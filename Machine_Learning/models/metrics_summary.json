@@ -1,0 +1,24 @@
+{
+  "champion": "rf",
+  "calibration": "isotonic",
+  "test_accuracy_hard": 0.9023255813953488,
+  "test_f1_macro_hard": 0.8660453529758495,
+  "test_f1_macro_thresholded": 0.8027051314235244,
+  "classes": [
+    "Air Conditioner",
+    "Compact Fluorescent Lamp",
+    "Fan",
+    "Fridge",
+    "Hairdryer",
+    "Heater",
+    "Incandescent Light Bulb",
+    "Laptop",
+    "Microwave",
+    "Vacuum",
+    "Washing Machine"
+  ],
+  "model_path": "/Users/joshle/Desktop/home-power-monitor/Machine_Learning/models/appliance_model_rf.joblib",
+  "thresholds_path": "/Users/joshle/Desktop/home-power-monitor/Machine_Learning/models/thresholds.json",
+  "feature_stats_path": "/Users/joshle/Desktop/home-power-monitor/Machine_Learning/models/feature_stats.json",
+  "ensemble_used": false
+}
