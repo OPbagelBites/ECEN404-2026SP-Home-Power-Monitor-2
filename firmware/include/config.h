@@ -13,7 +13,7 @@ static constexpr float     CFG_FS_HZ          = 4096.0f;   // sample rate
 static constexpr uint32_t  CFG_N_SAMPLES      = 1024;      // samples per frame
 static constexpr float     CFG_F0_HZ          = 60.0f;     // line frequency
 static constexpr char      CFG_WINDOW_NAME[]  = "hann";
-static constexpr float     CFG_FRAME_PERIOD_S = 1.0f;     // seconds per frame (~4 fps)
+static constexpr float     CFG_FRAME_PERIOD_S = 3.0f;     // seconds per frame (~4 fps)
 
 // ================== Simulation Pattern (ON↔OFF) ==================
 static constexpr float CFG_ON_DURATION_S   = 5.0f;
