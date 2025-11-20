@@ -37,6 +37,50 @@ static constexpr float V_RMS_TARGET   = CFG_V_RMS_TARGET;
 static constexpr float THDV_PLACEHOLDER = CFG_THDV_PLACEHOLDER;  // mirrors your sim
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Synthetic appliance profiles for TEST_MODE (used to simulate breaker data)
+// ─────────────────────────────────────────────────────────────────────────────
+#if TEST_MODE
+struct ApplianceProfile {
+  const char* name;
+  float I_RMS_ON;   // amps (approx)
+  float H2_ON;      // ratio wrt fundamental
+  float PHASE_DEG;  // degrees
+};
+
+static const ApplianceProfile PROFILES[] = {
+  // Big motor/compressor, high-ish current, moderate distortion
+  {"Air Conditioner",          10.0f, 0.635f, 50.6f},
+
+  // Small lighting loads
+  {"Compact Fluorescent Lamp",  0.30f, 0.082f, 26.4f},
+  {"Incandescent Light Bulb",   0.60f, 0.096f, 22.3f},
+
+  // Small–medium motor loads
+  {"Fan",                       1.00f, 0.121f, 20.0f},
+  {"Fridge",                    3.00f, 0.800f, 44.7f},
+
+  // High-power resistive / mixed
+  {"Hairdryer",                12.00f, 0.119f, 16.7f},  // ~1400 W
+  {"Heater",                   12.00f, 0.130f, 15.4f},  // ~1400 W
+
+  // Electronics / SMPS
+  {"Laptop",                    0.50f, 0.033f, 25.8f},
+
+  // High-power mixed (magnetron etc.)
+  {"Microwave",                 9.00f, 0.324f, 37.1f},  // ~1000 W
+
+  // Other large motor-ish loads
+  {"Vacuum",                   10.00f, 0.143f, 35.6f},  // ~1200 W
+  {"Washing Machine",           8.00f, 0.800f, 87.3f},  // peaks + motor
+};
+
+static constexpr int NUM_PROFILES = sizeof(PROFILES) / sizeof(PROFILES[0]);
+
+// Index of current simulated appliance when TEST_MODE is enabled
+static int profile_idx = 0;
+#endif
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Buffers
 static std::vector<float> v(N), i(N), window(N), i_win(N);
 
@@ -122,14 +166,31 @@ void loop() {
 
   // ── 1) Update ON/OFF state machine
   update_on_off_state();
-  const float irms_target = state_on ? I_RMS_ON : I_RMS_OFF;
-  const float h2_amp      = state_on ? H2_ON    : H2_OFF;
-  const char* state_str   = state_on ? "on"     : "off";
+  const char* state_str = state_on ? "on" : "off";
+
+  // In TEST_MODE, we may override these with an appliance profile
+  float irms_target = state_on ? I_RMS_ON : I_RMS_OFF;
+  float h2_amp      = state_on ? H2_ON    : H2_OFF;
+  float phase_deg   = PHASE_DEG;
+
+#if TEST_MODE
+  // Override with current simulated appliance profile when ON
+  const ApplianceProfile& prof = PROFILES[profile_idx];
+  if (state_on) {
+    irms_target = prof.I_RMS_ON;
+    h2_amp      = prof.H2_ON;
+    phase_deg   = prof.PHASE_DEG;
+  } else {
+    irms_target = I_RMS_OFF;
+    h2_amp      = H2_OFF;
+    phase_deg   = PHASE_DEG;
+  }
+#endif
 
   // ── 2) Acquire / Synthesize signals
 #if TEST_MODE
   // Synthetic V/I like your sandbox (includes harmonic 2 content on current)
-  signals::vi_test_signals(FS, N, V_RMS_TARGET, irms_target, F0, PHASE_DEG, h2_amp, v, i);
+  signals::vi_test_signals(FS, N, V_RMS_TARGET, irms_target, F0, phase_deg, h2_amp, v, i);
 #else
   // TODO: Replace with dual-channel ADC fill (remove bias, scale to volts/amps)
   // adc::fill_dual(v.data(), i.data(), N);  // example API
@@ -199,6 +260,18 @@ void loop() {
     latest_event["t_ms"] = static_cast<uint64_t>(now_ms());
   }
 
+#if TEST_MODE
+  // Rotate to next appliance on each ON→OFF cycle, independent of d_irms threshold
+  static bool prev_state_on_for_cycle = false;
+
+  if (prev_state_on_for_cycle && !state_on) {
+    // We just transitioned from ON -> OFF: advance profile
+    profile_idx = (profile_idx + 1) % NUM_PROFILES;
+  }
+
+  prev_state_on_for_cycle = state_on;
+#endif
+
   // ── 9) Build FrameCore & JSON
   FrameCore core{
     Vrms, Irms, P, S, PF,
@@ -216,6 +289,20 @@ void loop() {
     CFG_FW_TAG,
     CFG_CAL_ID
   );
+
+#if TEST_MODE
+  // Inject ground-truth labels for training when we are simulating
+  StaticJsonDocument<256> doc;
+  auto err = deserializeJson(doc, json);
+  if (!err) {
+    JsonArray labels = doc.createNestedArray("labels");
+    if (state_on) {
+      labels.add(PROFILES[profile_idx].name);
+    }
+    json = "";
+    serializeJson(doc, json);
+  }
+#endif
 
   // ── 10) Output logs
   Serial.println(json);
