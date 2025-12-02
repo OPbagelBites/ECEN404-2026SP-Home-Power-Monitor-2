@@ -1,6 +1,8 @@
 #include "utils.h"
 #include <time.h>
 
+//Adds time feature to the program
+
 namespace utils {
 uint64_t now_ms() {
   // Prefer millis() relative if no RTC; if you have SNTP later, swap to epoch.
