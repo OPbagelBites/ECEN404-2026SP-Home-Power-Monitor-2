@@ -5,7 +5,7 @@
 #ifndef TEST_MODE
 // 1 = generate synthetic V/I like your Python sandbox
 // 0 = read real ADC samples (we'll wire this up next)
-#define TEST_MODE 1
+#define TEST_MODE 0
 #endif
 
 // ================== Signal / Frame Settings ==================
