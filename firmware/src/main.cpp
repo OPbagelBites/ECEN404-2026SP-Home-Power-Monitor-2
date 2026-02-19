@@ -1,4 +1,4 @@
-// main.cpp (dual-channel VP/VN, minimal + stable)
+// main.cpp (SIM or REAL via ADS8344 external ADC)
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -6,6 +6,10 @@
 #include <vector>
 #include <map>
 #include <math.h>
+
+#if !TEST_MODE
+#include <SPI.h>
+#endif
 
 #include "config.h"
 #include "signals.h"
@@ -16,7 +20,6 @@
 
 StaticJsonDocument<160> latest_event;
 
-// Config aliases
 static constexpr float        FS_CFG          = CFG_FS_HZ;
 static constexpr uint32_t     N               = CFG_N_SAMPLES;
 static constexpr float        F0              = CFG_F0_HZ;
@@ -29,40 +32,44 @@ static constexpr float OFF_DURATION_S  = CFG_OFF_DURATION_S;
 static constexpr float I_RMS_OFF       = CFG_I_RMS_OFF_A;
 static constexpr float I_RMS_ON        = CFG_I_RMS_ON_A;
 static constexpr float PHASE_DEG       = CFG_PHASE_DEG;
+
 static constexpr float H2_OFF          = CFG_H2_OFF;
 static constexpr float H2_ON           = CFG_H2_ON;
 static constexpr float V_RMS_TARGET    = CFG_V_RMS_TARGET;
 
 static constexpr float THDV_PLACEHOLDER = CFG_THDV_PLACEHOLDER;
 
-// ESP32 ADC pins
-static constexpr int V_PIN = 36; // VP = GPIO36 = ADC1_CH0
-static constexpr int I_PIN = 39; // VN = GPIO39 = ADC1_CH3
-
 #if TEST_MODE
-struct ApplianceProfile { const char* name; float I_RMS_ON; float H2_ON; float PHASE_DEG; };
+struct ApplianceProfile {
+  const char* name;
+  float I_RMS_ON;
+  float H2_ON;
+  float H3_ON;
+  float H4_ON;
+  float H5_ON;
+  float PHASE_DEG;
+};
 
 static const ApplianceProfile PROFILES[] = {
-  {"Air Conditioner",          10.0f, 0.635f, 50.6f},
-  {"Compact Fluorescent Lamp",  0.30f, 0.082f, 26.4f},
-  {"Incandescent Light Bulb",   0.60f, 0.096f, 22.3f},
-  {"Fan",                       1.00f, 0.121f, 20.0f},
-  {"Fridge",                    3.00f, 0.800f, 44.7f},
-  {"Hairdryer",                12.00f, 0.119f, 16.7f},
-  {"Heater",                   12.00f, 0.130f, 15.4f},
-  {"Laptop",                    0.50f, 0.033f, 25.8f},
-  {"Microwave",                 9.00f, 0.324f, 37.1f},
-  {"Vacuum",                   10.00f, 0.143f, 35.6f},
-  {"Washing Machine",           8.00f, 0.800f, 87.3f},
+  {"Air Conditioner",           1.192706f, 0.00217665f, 0.04316344f, 0.00082146f, 0.01452099f, 35.7835f},
+  {"Compact Fluorescent Lamp",  0.162197f, 0.01215796f, 0.80368712f, 0.00947182f, 0.44727753f, 64.2708f},
+  {"Fan",                       0.372436f, 0.00331123f, 0.03764177f, 0.00172074f, 0.01769968f, 27.3296f},
+  {"Fridge",                    3.089953f, 0.00298826f, 0.05050919f, 0.00097678f, 0.01596840f, 40.1619f},
+  {"Hairdryer",                 4.223328f, 0.00262886f, 0.02072254f, 0.00095582f, 0.01376311f, 21.3599f},
+  {"Heater",                    8.847182f, 0.00095121f, 0.01696448f, 0.00054136f, 0.01279767f, 20.7661f},
+  {"Incandescent Light Bulb",   0.300547f, 0.00654241f, 0.01582962f, 0.00435971f, 0.01456974f, 24.6898f},
+  {"Laptop",                    0.343313f, 0.00714021f, 0.90758221f, 0.00604128f, 0.68551296f, 59.4576f},
+  {"Microwave",                 8.486173f, 0.04939847f, 0.32763411f, 0.01877993f, 0.13661158f, 48.5796f},
+  {"Vacuum",                    7.662025f, 0.00518261f, 0.17515441f, 0.00139704f, 0.01429103f, 32.7705f},
+  {"Washing Machine",           4.573205f, 0.00230555f, 0.03246858f, 0.00068493f, 0.01206051f, 54.5545f},
 };
+
 static constexpr int NUM_PROFILES = sizeof(PROFILES) / sizeof(PROFILES[0]);
 static int profile_idx = 0;
 #endif
 
-// Buffers
 static std::vector<float> v(N), i(N), window(N), i_win(N);
 
-// State
 static uint32_t frame_id          = 0;
 static bool     state_on          = false;
 static uint32_t state_switched_ms = 0;
@@ -70,6 +77,7 @@ static float    prev_irms         = NAN;
 static float    prev_p            = NAN;
 
 namespace {
+
 inline uint32_t now_ms() { return millis(); }
 inline uint32_t elapsed_since(uint32_t t0) { return (uint32_t)(millis() - t0); }
 inline float zf(float x) { return (float)utils::z(x); }
@@ -93,6 +101,61 @@ inline void dc_remove(std::vector<float>& x) {
   const float mf = (float)m;
   for (uint32_t n = 0; n < N; ++n) x[n] -= mf;
 }
+
+inline float get_h(const std::map<String, float>& h_i, const char* key) {
+  auto it = h_i.find(String(key));
+  return (it == h_i.end()) ? 0.0f : it->second;
+}
+
+#if !TEST_MODE
+static SPIClass* adcSPI = &SPI;
+
+static inline uint16_t ads8344_read_ch(uint8_t ch) {
+  // Control byte: Start=1, SGL=1, A2..A0=ch, PD1..PD0=00
+  const uint8_t ctrl = (uint8_t)(0xC0 | ((ch & 0x07) << 3));
+
+  digitalWrite(CFG_ADC_CS_PIN, LOW);
+  adcSPI->beginTransaction(SPISettings(CFG_ADC_SPI_HZ, MSBFIRST, SPI_MODE0));
+
+  adcSPI->transfer(ctrl);
+
+  // Read 16 bits; typical packing has 4 leading bits then 12 data bits.
+  const uint8_t b1 = adcSPI->transfer(0x00);
+  const uint8_t b2 = adcSPI->transfer(0x00);
+
+  adcSPI->endTransaction();
+  digitalWrite(CFG_ADC_CS_PIN, HIGH);
+
+  const uint16_t raw  = (uint16_t)((uint16_t)b1 << 8) | b2;
+  const uint16_t code = (uint16_t)((raw >> 4) & 0x0FFF);
+  return code;
+}
+
+static inline float sample_ads8344_block(std::vector<float>& v_out, std::vector<float>& i_out) {
+  const uint32_t dt_us = (uint32_t)lroundf(1e6f / FS_CFG);
+  uint32_t t_next = micros() + dt_us;
+
+  const uint32_t t_start = micros();
+
+  for (uint32_t n = 0; n < N; ++n) {
+    while ((int32_t)(micros() - t_next) < 0) {}
+    t_next += dt_us;
+
+    const uint16_t ci = ads8344_read_ch(CFG_ADC_CH_I); // CH0 current
+    const uint16_t cv = ads8344_read_ch(CFG_ADC_CH_V); // CH1 voltage
+
+    i_out[n] = (ci / 4095.0f) * CFG_ADC_VREF_V;
+    v_out[n] = (cv / 4095.0f) * CFG_ADC_VREF_V;
+  }
+
+  const uint32_t t_end = micros();
+  if (t_end > t_start) {
+    return (1e6f * (float)N) / (float)(t_end - t_start);
+  }
+  return FS_CFG;
+}
+#endif
+
 } // namespace
 
 void setup() {
@@ -106,9 +169,9 @@ void setup() {
   state_switched_ms = now_ms();
 
 #if !TEST_MODE
-  analogReadResolution(12);                 // 0..4095
-  analogSetPinAttenuation(V_PIN, ADC_11db); // widest-ish range
-  analogSetPinAttenuation(I_PIN, ADC_11db);
+  pinMode(CFG_ADC_CS_PIN, OUTPUT);
+  digitalWrite(CFG_ADC_CS_PIN, HIGH);
+  adcSPI->begin(/*SCLK*/ 18, /*MISO*/ 19, /*MOSI*/ 23, /*SS*/ CFG_ADC_CS_PIN);
 #endif
 
   Serial.println(F("{\"boot\":\"ok\"}"));
@@ -130,56 +193,45 @@ void loop() {
   const char* state_str = state_on ? "on" : "off";
 
   float irms_target = state_on ? I_RMS_ON : I_RMS_OFF;
-  float h2_amp      = state_on ? H2_ON    : H2_OFF;
   float phase_deg   = PHASE_DEG;
 
-  float fs_eff = FS_CFG; // measured in REAL mode, used for DFT/Goertzel
+  float h2_amp = state_on ? H2_ON : H2_OFF;
+  float h3_amp = 0.0f;
+  float h4_amp = 0.0f;
+  float h5_amp = 0.0f;
+
+  float fs_eff = FS_CFG;
 
 #if TEST_MODE
   const ApplianceProfile& prof = PROFILES[profile_idx];
   if (state_on) {
     irms_target = prof.I_RMS_ON;
-    h2_amp      = prof.H2_ON;
     phase_deg   = prof.PHASE_DEG;
+    h2_amp      = prof.H2_ON;
+    h3_amp      = prof.H3_ON;
+    h4_amp      = prof.H4_ON;
+    h5_amp      = prof.H5_ON;
   } else {
     irms_target = I_RMS_OFF;
-    h2_amp      = H2_OFF;
     phase_deg   = PHASE_DEG;
+    h2_amp      = H2_OFF;
+    h3_amp      = 0.0f;
+    h4_amp      = 0.0f;
+    h5_amp      = 0.0f;
   }
-  signals::vi_test_signals(FS_CFG, N, V_RMS_TARGET, irms_target, F0, phase_deg, h2_amp, v, i);
 
+  signals::vi_test_signals(FS_CFG, N, V_RMS_TARGET, irms_target, F0, phase_deg,
+                           h2_amp, h3_amp, h4_amp, h5_amp, v, i);
 #else
-  // Sample VP/VN with timing loop. Convert raw->volts same as your earlier code.
-  const uint32_t dt_us = (uint32_t)lroundf(1e6f / FS_CFG);
-  uint32_t t_next = micros() + dt_us;
+  fs_eff = sample_ads8344_block(v, i);
 
-  const uint32_t t_start = micros();
-
-  for (uint32_t n = 0; n < N; ++n) {
-    while ((int32_t)(micros() - t_next) < 0) {}
-    t_next += dt_us;
-
-    const int rv = analogRead(V_PIN);
-    const int ri = analogRead(I_PIN);
-
-    v[n] = (rv / 4095.0f) * 3.3f;
-    i[n] = (ri / 4095.0f) * 3.3f;
-  }
-
-  const uint32_t t_end = micros();
-  if (t_end > t_start) {
-    fs_eff = (1e6f * (float)N) / (float)(t_end - t_start);
-  }
-
-  // Remove the ~1.6V bias from both channels
+  // If your AFE biases mid-rail (likely), keep DC removal.
   dc_remove(v);
   dc_remove(i);
 #endif
 
-  // Window current for harmonics
   for (uint32_t n = 0; n < N; ++n) i_win[n] = i[n] * window[n];
 
-  // Metrics
   const float Vrms = dsp::rms(v.data(), N);
   const float Irms = dsp::rms(i.data(), N);
   const float P    = dsp::real_power(v.data(), i.data(), N);
@@ -249,13 +301,22 @@ void loop() {
     CFG_FW_TAG, CFG_CAL_ID
   );
 
-  // Debug injection (and labels in TEST_MODE)
   {
-    StaticJsonDocument<2304> doc;
+    StaticJsonDocument<3072> doc;
     if (deserializeJson(doc, json) == DeserializationError::Ok) {
+      doc["mode"] = TEST_MODE ? "SIM" : "REAL";
+
+      doc["h2_i_norm"] = get_h(h_i, "120");
+      doc["h3_i_norm"] = get_h(h_i, "180");
+      doc["h4_i_norm"] = get_h(h_i, "240");
+      doc["h5_i_norm"] = get_h(h_i, "300");
+
 #if TEST_MODE
-      JsonArray labels = doc.createNestedArray("labels");
-      if (state_on) labels.add(PROFILES[profile_idx].name);
+      if (state_on) {
+        doc["appliance_type"] = PROFILES[profile_idx].name;
+        JsonArray labels = doc.createNestedArray("labels");
+        labels.add(PROFILES[profile_idx].name);
+      }
 #endif
 
       float vmin = 1e9f, vmax = -1e9f;
@@ -266,8 +327,13 @@ void loop() {
       }
 
       JsonObject dbg = doc.createNestedObject("dbg");
-      dbg["v_pin"]  = "VP";
-      dbg["i_pin"]  = "VN";
+#if TEST_MODE
+      dbg["v_src"] = "SIM";
+      dbg["i_src"] = "SIM";
+#else
+      dbg["v_src"] = "ADS8344_CH1";
+      dbg["i_src"] = "ADS8344_CH0";
+#endif
       dbg["fs_eff"] = fs_eff;
       dbg["v_min"]  = vmin;
       dbg["v_max"]  = vmax;

@@ -6,13 +6,39 @@
 
 namespace signals {
 
-// Basic sine
-void sine(float f, float fs, size_t N, float amplitude, float phase_rad, std::vector<float>& out);
+// out[n] = amplitude * sin(2π f n / fs + phase_rad)
+void sine(float f,
+          float fs,
+          size_t N,
+          float amplitude,
+          float phase_rad,
+          std::vector<float>& out);
 
-// Test V/I pair (sim mode) – mirrors your Python vi_test_signals()
-// Voltage phase = 0; current lags by +phase_deg (pass negative degrees if you want lead)
-void vi_test_signals(float fs, size_t N, float vrms, float irms, float f0, float phase_deg, float h2_amp,
-                     std::vector<float>& v, std::vector<float>& i);
+// Backwards-compatible: only H2 injected into current.
+void vi_test_signals(float fs,
+                     size_t N,
+                     float vrms,
+                     float irms,
+                     float f0,
+                     float phase_deg,
+                     float h2_amp,
+                     std::vector<float>& v,
+                     std::vector<float>& i);
+
+// New: inject H2–H5 into current.
+// hK_amp are ratios relative to the fundamental peak (Ipk).
+void vi_test_signals(float fs,
+                     size_t N,
+                     float vrms,
+                     float irms,
+                     float f0,
+                     float phase_deg,
+                     float h2_amp,
+                     float h3_amp,
+                     float h4_amp,
+                     float h5_amp,
+                     std::vector<float>& v,
+                     std::vector<float>& i);
 
 } // namespace signals
 
