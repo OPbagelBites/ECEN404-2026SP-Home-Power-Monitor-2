@@ -24,11 +24,19 @@ void dft_phasor(const float* x, size_t N, float fs, float f0, float& out_rms, fl
 // Goertzel for a specific frequency (magnitude only)
 float goertzel_mag(const float* x, size_t N, float fs, float freq);
 
-// THD using Goertzel on selected harmonics vs fundamental at f0
+// THD using Goertzel (old API)
 float thd_goertzel(const float* x_win, size_t N, float fs, float f0, const std::vector<float>& harmonics);
 
-// Harmonic ratios (mag_k / mag_fund), keyed by harmonic frequency (e.g., "120","180",…)
+// THD using Goertzel (new: no heap allocation)
+float thd_goertzel(const float* x_win, size_t N, float fs, float f0,
+                   const float* harmonics_hz, size_t harmonics_len);
+
+// Harmonic ratios (old API)
 std::map<String, float> harmonic_ratios_goertzel(const float* x_win, size_t N, float fs, float f0, int kmax);
+
+// Harmonic ratios (new: no heap allocation)
+// out_ratio[k] = mag(k*f0)/mag(f0) for k=2..kmax. out_ratio[0..1] unused.
+void harmonic_ratios_goertzel(const float* x_win, size_t N, float fs, float f0, int kmax, float* out_ratio);
 
 } // namespace dsp
 

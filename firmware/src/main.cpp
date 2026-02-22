@@ -1,17 +1,15 @@
-// main.cpp (SIM or REAL via ADS8344 external ADC)
+#include "config.h"  // MUST be first
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <vector>
-#include <map>
 #include <math.h>
 
 #if !TEST_MODE
-#include <SPI.h>
+  #include <SPI.h>
 #endif
 
-#include "config.h"
 #include "signals.h"
 #include "dsp.h"
 #include "telemetry.h"
@@ -20,6 +18,7 @@
 
 StaticJsonDocument<160> latest_event;
 
+// ─────────────────────────────────────────────────────────────
 static constexpr float        FS_CFG          = CFG_FS_HZ;
 static constexpr uint32_t     N               = CFG_N_SAMPLES;
 static constexpr float        F0              = CFG_F0_HZ;
@@ -80,7 +79,7 @@ namespace {
 
 inline uint32_t now_ms() { return millis(); }
 inline uint32_t elapsed_since(uint32_t t0) { return (uint32_t)(millis() - t0); }
-inline float zf(float x) { return (float)utils::z(x); }
+inline float zf(float x) { return utils::z(x); }
 
 inline void update_on_off_state() {
   const uint32_t elapsed = elapsed_since(state_switched_ms);
@@ -102,33 +101,32 @@ inline void dc_remove(std::vector<float>& x) {
   for (uint32_t n = 0; n < N; ++n) x[n] -= mf;
 }
 
-inline float get_h(const std::map<String, float>& h_i, const char* key) {
-  auto it = h_i.find(String(key));
-  return (it == h_i.end()) ? 0.0f : it->second;
-}
-
 #if !TEST_MODE
 static SPIClass* adcSPI = &SPI;
 
+#ifndef CFG_ADC_DEBUG_RAW
+#define CFG_ADC_DEBUG_RAW 0
+#endif
+
 static inline uint16_t ads8344_read_ch(uint8_t ch) {
-  // Control byte: Start=1, SGL=1, A2..A0=ch, PD1..PD0=00
   const uint8_t ctrl = (uint8_t)(0xC0 | ((ch & 0x07) << 3));
 
   digitalWrite(CFG_ADC_CS_PIN, LOW);
-  adcSPI->beginTransaction(SPISettings(CFG_ADC_SPI_HZ, MSBFIRST, SPI_MODE0));
-
   adcSPI->transfer(ctrl);
-
-  // Read 16 bits; typical packing has 4 leading bits then 12 data bits.
   const uint8_t b1 = adcSPI->transfer(0x00);
   const uint8_t b2 = adcSPI->transfer(0x00);
-
-  adcSPI->endTransaction();
+  const uint8_t b3 = adcSPI->transfer(0x00);
   digitalWrite(CFG_ADC_CS_PIN, HIGH);
 
-  const uint16_t raw  = (uint16_t)((uint16_t)b1 << 8) | b2;
-  const uint16_t code = (uint16_t)((raw >> 4) & 0x0FFF);
-  return code;
+#if CFG_ADC_DEBUG_RAW
+  static uint32_t dbg_cnt = 0;
+  if ((dbg_cnt++ % 512) == 0) {
+    Serial.printf("[adc] ch=%u bytes=%02X %02X %02X\n", ch, b1, b2, b3);
+  }
+#endif
+
+  // Default: last 16 bits. Adjust this line once if alignment differs.
+  return (uint16_t)(((uint16_t)b2 << 8) | b3);
 }
 
 static inline float sample_ads8344_block(std::vector<float>& v_out, std::vector<float>& i_out) {
@@ -137,21 +135,23 @@ static inline float sample_ads8344_block(std::vector<float>& v_out, std::vector<
 
   const uint32_t t_start = micros();
 
+  adcSPI->beginTransaction(SPISettings(CFG_ADC_SPI_HZ, MSBFIRST, SPI_MODE0));
+
   for (uint32_t n = 0; n < N; ++n) {
     while ((int32_t)(micros() - t_next) < 0) {}
     t_next += dt_us;
 
-    const uint16_t ci = ads8344_read_ch(CFG_ADC_CH_I); // CH0 current
-    const uint16_t cv = ads8344_read_ch(CFG_ADC_CH_V); // CH1 voltage
+    const uint16_t ci = ads8344_read_ch(CFG_ADC_CH_I);
+    const uint16_t cv = ads8344_read_ch(CFG_ADC_CH_V);
 
-    i_out[n] = (ci / 4095.0f) * CFG_ADC_VREF_V;
-    v_out[n] = (cv / 4095.0f) * CFG_ADC_VREF_V;
+    i_out[n] = (ci / 65535.0f) * CFG_ADC_VREF_V;
+    v_out[n] = (cv / 65535.0f) * CFG_ADC_VREF_V;
   }
+
+  adcSPI->endTransaction();
 
   const uint32_t t_end = micros();
-  if (t_end > t_start) {
-    return (1e6f * (float)N) / (float)(t_end - t_start);
-  }
+  if (t_end > t_start) return (1e6f * (float)N) / (float)(t_end - t_start);
   return FS_CFG;
 }
 #endif
@@ -215,17 +215,13 @@ void loop() {
     irms_target = I_RMS_OFF;
     phase_deg   = PHASE_DEG;
     h2_amp      = H2_OFF;
-    h3_amp      = 0.0f;
-    h4_amp      = 0.0f;
-    h5_amp      = 0.0f;
+    h3_amp = h4_amp = h5_amp = 0.0f;
   }
 
   signals::vi_test_signals(FS_CFG, N, V_RMS_TARGET, irms_target, F0, phase_deg,
                            h2_amp, h3_amp, h4_amp, h5_amp, v, i);
 #else
   fs_eff = sample_ads8344_block(v, i);
-
-  // If your AFE biases mid-rail (likely), keep DC removal.
   dc_remove(v);
   dc_remove(i);
 #endif
@@ -250,17 +246,18 @@ void loop() {
   const float Q1      = S1 * sinf(phi);
   const float PF_disp = cosf(phi);
 
-  const std::vector<float> harms = { 2.0f*F0, 3.0f*F0, 4.0f*F0, 5.0f*F0 };
-  const float THD_i = dsp::thd_goertzel(i_win.data(), N, fs_eff, F0, harms);
+  // No-heap harmonics list for THD
+  const float harms_hz[4] = { 2.0f*F0, 3.0f*F0, 4.0f*F0, 5.0f*F0 };
+  const float THD_i = dsp::thd_goertzel(i_win.data(), N, fs_eff, F0, harms_hz, 4);
   const float THD_v = THDV_PLACEHOLDER;
 
-  auto h_i = dsp::harmonic_ratios_goertzel(i_win.data(), N, fs_eff, F0, CFG_HARM_KMAX);
+  // No-heap harmonic ratios
+  float h_ratio[CFG_HARM_KMAX + 1];
+  dsp::harmonic_ratios_goertzel(i_win.data(), N, fs_eff, F0, CFG_HARM_KMAX, h_ratio);
 
   double odd_sum = 0.0, even_sum = 0.0;
-  for (const auto& kv : h_i) {
-    const int f_hz = atoi(kv.first.c_str());
-    const int k    = (int)lroundf((float)f_hz / F0);
-    if (k >= 2) ((k % 2) == 0) ? (even_sum += kv.second) : (odd_sum += kv.second);
+  for (int k = 2; k <= CFG_HARM_KMAX; ++k) {
+    ((k % 2) == 0) ? (even_sum += h_ratio[k]) : (odd_sum += h_ratio[k]);
   }
 
   const float crest_i = dsp::crest_factor(i.data(), N);
@@ -294,63 +291,70 @@ void loop() {
 
   const uint64_t t_ms = utils::now_ms();
 
-  String json = pack_frame_json(
+  // One document, one serialize.
+  // 4096 is usually enough for your schema + dbg + 32 samples.
+  StaticJsonDocument<4096> doc;
+
+  pack_frame_json(
+    doc,
     t_ms, frame_id, fs_eff, N, WINDOW_NAME, F0,
-    core, h_i, state_str, zf(d_irms), zf(d_p),
+    core,
+    h_ratio, CFG_HARM_KMAX,
+    state_str,
+    zf(d_irms), zf(d_p),
     true, true, true,
     CFG_FW_TAG, CFG_CAL_ID
   );
 
-  {
-    StaticJsonDocument<3072> doc;
-    if (deserializeJson(doc, json) == DeserializationError::Ok) {
-      doc["mode"] = TEST_MODE ? "SIM" : "REAL";
+  // Enrich fields (same as before)
+  doc["mode"] = TEST_MODE ? "SIM" : "REAL";
 
-      doc["h2_i_norm"] = get_h(h_i, "120");
-      doc["h3_i_norm"] = get_h(h_i, "180");
-      doc["h4_i_norm"] = get_h(h_i, "240");
-      doc["h5_i_norm"] = get_h(h_i, "300");
+  // These mirror your previous get_h("120") etc.
+  doc["h2_i_norm"] = h_ratio[2];
+  doc["h3_i_norm"] = (CFG_HARM_KMAX >= 3) ? h_ratio[3] : 0.0f;
+  doc["h4_i_norm"] = (CFG_HARM_KMAX >= 4) ? h_ratio[4] : 0.0f;
+  doc["h5_i_norm"] = (CFG_HARM_KMAX >= 5) ? h_ratio[5] : 0.0f;
 
 #if TEST_MODE
-      if (state_on) {
-        doc["appliance_type"] = PROFILES[profile_idx].name;
-        JsonArray labels = doc.createNestedArray("labels");
-        labels.add(PROFILES[profile_idx].name);
-      }
-#endif
-
-      float vmin = 1e9f, vmax = -1e9f;
-      float imin = 1e9f, imax = -1e9f;
-      for (uint32_t n = 0; n < N; ++n) {
-        vmin = fminf(vmin, v[n]); vmax = fmaxf(vmax, v[n]);
-        imin = fminf(imin, i[n]); imax = fmaxf(imax, i[n]);
-      }
-
-      JsonObject dbg = doc.createNestedObject("dbg");
-#if TEST_MODE
-      dbg["v_src"] = "SIM";
-      dbg["i_src"] = "SIM";
-#else
-      dbg["v_src"] = "ADS8344_CH1";
-      dbg["i_src"] = "ADS8344_CH0";
-#endif
-      dbg["fs_eff"] = fs_eff;
-      dbg["v_min"]  = vmin;
-      dbg["v_max"]  = vmax;
-      dbg["i_min"]  = imin;
-      dbg["i_max"]  = imax;
-
-      JsonArray vs = dbg.createNestedArray("v_samp");
-      JsonArray is = dbg.createNestedArray("i_samp");
-      for (uint32_t k = 0; k < 32 && k < N; ++k) {
-        vs.add(v[k]);
-        is.add(i[k]);
-      }
-
-      json = "";
-      serializeJson(doc, json);
-    }
+  if (state_on) {
+    doc["appliance_type"] = PROFILES[profile_idx].name;
+    JsonArray labels = doc.createNestedArray("labels");
+    labels.add(PROFILES[profile_idx].name);
   }
+#endif
+
+  float vmin = 1e9f, vmax = -1e9f;
+  float imin = 1e9f, imax = -1e9f;
+  for (uint32_t n = 0; n < N; ++n) {
+    vmin = fminf(vmin, v[n]); vmax = fmaxf(vmax, v[n]);
+    imin = fminf(imin, i[n]); imax = fmaxf(imax, i[n]);
+  }
+
+  JsonObject dbg = doc.createNestedObject("dbg");
+#if TEST_MODE
+  dbg["v_src"] = "SIM";
+  dbg["i_src"] = "SIM";
+#else
+  dbg["v_src"] = "ADS8344_CH1";
+  dbg["i_src"] = "ADS8344_CH0";
+#endif
+  dbg["fs_eff"] = fs_eff;
+  dbg["v_min"]  = vmin;
+  dbg["v_max"]  = vmax;
+  dbg["i_min"]  = imin;
+  dbg["i_max"]  = imax;
+
+  JsonArray vs = dbg.createNestedArray("v_samp");
+  JsonArray is = dbg.createNestedArray("i_samp");
+  for (uint32_t k = 0; k < 32 && k < N; ++k) {
+    vs.add(v[k]);
+    is.add(i[k]);
+  }
+
+  // Serialize once, with reserved capacity to reduce reallocs.
+  String json;
+  json.reserve(4096);
+  serializeJson(doc, json);
 
   Serial.println(json);
 
