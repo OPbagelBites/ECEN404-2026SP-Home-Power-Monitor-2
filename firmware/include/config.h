@@ -5,7 +5,7 @@
 #ifndef TEST_MODE
 // 1 = generate synthetic V/I (SIM)
 // 0 = read real samples from external ADC (ADS8344 on PCB)
-#define TEST_MODE 1
+#define TEST_MODE 0
 #endif
 
 // ================== Signal / Frame Settings ==================
