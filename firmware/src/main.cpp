@@ -75,6 +75,14 @@ static uint32_t state_switched_ms = 0;
 static float    prev_irms         = NAN;
 static float    prev_p            = NAN;
 
+#if !TEST_MODE
+static bool g_adc_ok = false;
+static uint16_t g_last_raw_i = 0;
+static uint16_t g_last_raw_v = 0;
+static uint8_t g_last_b_i[4] = {0,0,0,0};
+static uint8_t g_last_b_v[4] = {0,0,0,0};
+#endif
+
 namespace {
 
 inline uint32_t now_ms() { return millis(); }
@@ -104,29 +112,70 @@ inline void dc_remove(std::vector<float>& x) {
 #if !TEST_MODE
 static SPIClass* adcSPI = &SPI;
 
-#ifndef CFG_ADC_DEBUG_RAW
-#define CFG_ADC_DEBUG_RAW 0
-#endif
+static inline uint8_t ads8344_build_ctrl(uint8_t ch) {
+  // ADS8344 command format: S A2 A1 A0 S/D PD1 PD0
+  return (uint8_t)(
+      CFG_ADC_CMD_START
+    | ((ch & 0x07) << 4)
+    | CFG_ADC_CMD_SINGLE_EN
+    | CFG_ADC_CMD_PD_ALWAYS
+  );
+}
 
-static inline uint16_t ads8344_read_ch(uint8_t ch) {
-  const uint8_t ctrl = (uint8_t)(0xC0 | ((ch & 0x07) << 3));
+static inline uint16_t ads8344_extract_raw(uint8_t b1, uint8_t b2, uint8_t b3) {
+  // Temporary alignment assumption:
+  // use the last 16 bits clocked out after command transfer.
+  // If needed later, this is the one place to change.
+  return (uint16_t)(((uint16_t)b2 << 8) | b3);
+}
+
+static inline uint16_t ads8344_read_once(uint8_t ch, uint8_t out_bytes[4]) {
+  const uint8_t ctrl = ads8344_build_ctrl(ch);
 
   digitalWrite(CFG_ADC_CS_PIN, LOW);
-  adcSPI->transfer(ctrl);
-  const uint8_t b1 = adcSPI->transfer(0x00);
-  const uint8_t b2 = adcSPI->transfer(0x00);
-  const uint8_t b3 = adcSPI->transfer(0x00);
+  out_bytes[0] = adcSPI->transfer(ctrl);
+  out_bytes[1] = adcSPI->transfer(0x00);
+  out_bytes[2] = adcSPI->transfer(0x00);
+  out_bytes[3] = adcSPI->transfer(0x00);
   digitalWrite(CFG_ADC_CS_PIN, HIGH);
 
-#if CFG_ADC_DEBUG_RAW
-  static uint32_t dbg_cnt = 0;
-  if ((dbg_cnt++ % 512) == 0) {
-    Serial.printf("[adc] ch=%u bytes=%02X %02X %02X\n", ch, b1, b2, b3);
-  }
-#endif
+  return ads8344_extract_raw(out_bytes[1], out_bytes[2], out_bytes[3]);
+}
 
-  // Default: last 16 bits. Adjust this line once if alignment differs.
-  return (uint16_t)(((uint16_t)b2 << 8) | b3);
+static inline uint16_t ads8344_read_ch(uint8_t ch, uint8_t out_bytes[4]) {
+  uint8_t throwaway[4] = {0,0,0,0};
+
+  if (CFG_ADC_USE_DUMMY_READ) {
+    (void)ads8344_read_once(ch, throwaway);
+  }
+
+  return ads8344_read_once(ch, out_bytes);
+}
+
+static inline float raw_to_volts(uint16_t raw) {
+  return ((float)raw / 65535.0f) * CFG_ADC_VREF_V;
+}
+
+static inline bool adc_samples_look_valid(
+  const std::vector<float>& v_out,
+  const std::vector<float>& i_out,
+  float& vmin, float& vmax,
+  float& imin, float& imax
+) {
+  vmin =  1e9f; vmax = -1e9f;
+  imin =  1e9f; imax = -1e9f;
+
+  for (uint32_t n = 0; n < N; ++n) {
+    vmin = fminf(vmin, v_out[n]); vmax = fmaxf(vmax, v_out[n]);
+    imin = fminf(imin, i_out[n]); imax = fmaxf(imax, i_out[n]);
+  }
+
+  const float vspan = vmax - vmin;
+  const float ispan = imax - imin;
+
+  // Simple sanity rule:
+  // if both channels are nearly perfectly flat, something is wrong.
+  return (vspan > 0.002f) || (ispan > 0.002f);
 }
 
 static inline float sample_ads8344_block(std::vector<float>& v_out, std::vector<float>& i_out) {
@@ -141,11 +190,21 @@ static inline float sample_ads8344_block(std::vector<float>& v_out, std::vector<
     while ((int32_t)(micros() - t_next) < 0) {}
     t_next += dt_us;
 
-    const uint16_t ci = ads8344_read_ch(CFG_ADC_CH_I);
-    const uint16_t cv = ads8344_read_ch(CFG_ADC_CH_V);
+    uint8_t bi[4] = {0,0,0,0};
+    uint8_t bv[4] = {0,0,0,0};
 
-    i_out[n] = (ci / 65535.0f) * CFG_ADC_VREF_V;
-    v_out[n] = (cv / 65535.0f) * CFG_ADC_VREF_V;
+    const uint16_t ci = ads8344_read_ch(CFG_ADC_CH_I, bi);
+    const uint16_t cv = ads8344_read_ch(CFG_ADC_CH_V, bv);
+
+    g_last_raw_i = ci;
+    g_last_raw_v = cv;
+    for (int k = 0; k < 4; ++k) {
+      g_last_b_i[k] = bi[k];
+      g_last_b_v[k] = bv[k];
+    }
+
+    i_out[n] = raw_to_volts(ci);
+    v_out[n] = raw_to_volts(cv);
   }
 
   adcSPI->endTransaction();
@@ -160,7 +219,8 @@ static inline float sample_ads8344_block(std::vector<float>& v_out, std::vector<
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial) delay(10);
+  delay(200);
+  Serial.println("BOOT START");
 
   window.assign(N, 0.0f);
   dsp::hann(window);
@@ -222,8 +282,16 @@ void loop() {
                            h2_amp, h3_amp, h4_amp, h5_amp, v, i);
 #else
   fs_eff = sample_ads8344_block(v, i);
-  dc_remove(v);
-  dc_remove(i);
+
+// Remove DC bias so the DSP sees only the AC waveform
+dc_remove(v);
+dc_remove(i);
+
+// Convert ADC-side waveform volts into real-world units
+for (uint32_t n = 0; n < N; ++n) {
+  v[n] *= CFG_V_SCALE;   // now in real volts
+  i[n] *= CFG_I_SCALE;   // now in real amps
+}
 #endif
 
   for (uint32_t n = 0; n < N; ++n) i_win[n] = i[n] * window[n];
@@ -246,12 +314,10 @@ void loop() {
   const float Q1      = S1 * sinf(phi);
   const float PF_disp = cosf(phi);
 
-  // No-heap harmonics list for THD
   const float harms_hz[4] = { 2.0f*F0, 3.0f*F0, 4.0f*F0, 5.0f*F0 };
   const float THD_i = dsp::thd_goertzel(i_win.data(), N, fs_eff, F0, harms_hz, 4);
   const float THD_v = THDV_PLACEHOLDER;
 
-  // No-heap harmonic ratios
   float h_ratio[CFG_HARM_KMAX + 1];
   dsp::harmonic_ratios_goertzel(i_win.data(), N, fs_eff, F0, CFG_HARM_KMAX, h_ratio);
 
@@ -290,10 +356,12 @@ void loop() {
   };
 
   const uint64_t t_ms = utils::now_ms();
-
-  // One document, one serialize.
-  // 4096 is usually enough for your schema + dbg + 32 samples.
   StaticJsonDocument<4096> doc;
+
+#if !TEST_MODE
+  float dbg_vmin_chk, dbg_vmax_chk, dbg_imin_chk, dbg_imax_chk;
+  g_adc_ok = adc_samples_look_valid(v, i, dbg_vmin_chk, dbg_vmax_chk, dbg_imin_chk, dbg_imax_chk);
+#endif
 
   pack_frame_json(
     doc,
@@ -302,14 +370,16 @@ void loop() {
     h_ratio, CFG_HARM_KMAX,
     state_str,
     zf(d_irms), zf(d_p),
+#if TEST_MODE
     true, true, true,
+#else
+    g_adc_ok, true, true,
+#endif
     CFG_FW_TAG, CFG_CAL_ID
   );
 
-  // Enrich fields (same as before)
   doc["mode"] = TEST_MODE ? "SIM" : "REAL";
 
-  // These mirror your previous get_h("120") etc.
   doc["h2_i_norm"] = h_ratio[2];
   doc["h3_i_norm"] = (CFG_HARM_KMAX >= 3) ? h_ratio[3] : 0.0f;
   doc["h4_i_norm"] = (CFG_HARM_KMAX >= 4) ? h_ratio[4] : 0.0f;
@@ -337,6 +407,16 @@ void loop() {
 #else
   dbg["v_src"] = "ADS8344_CH1";
   dbg["i_src"] = "ADS8344_CH0";
+  dbg["adc_ok_runtime"] = g_adc_ok;
+  dbg["raw_i"] = g_last_raw_i;
+  dbg["raw_v"] = g_last_raw_v;
+
+  JsonArray rawbi = dbg.createNestedArray("raw_bytes_i");
+  JsonArray rawbv = dbg.createNestedArray("raw_bytes_v");
+  for (int k = 0; k < 4; ++k) {
+    rawbi.add(g_last_b_i[k]);
+    rawbv.add(g_last_b_v[k]);
+  }
 #endif
   dbg["fs_eff"] = fs_eff;
   dbg["v_min"]  = vmin;
@@ -351,12 +431,26 @@ void loop() {
     is.add(i[k]);
   }
 
-  // Serialize once, with reserved capacity to reduce reallocs.
   String json;
   json.reserve(4096);
   serializeJson(doc, json);
 
   Serial.println(json);
+
+#if !TEST_MODE
+  if (CFG_ADC_DEBUG_RAW_BYTES) {
+    static uint32_t dbg_cnt = 0;
+    if ((dbg_cnt++ % 8) == 0) {
+      Serial.printf(
+        "[adc] raw_i=%u raw_v=%u bytes_i=%02X %02X %02X %02X bytes_v=%02X %02X %02X %02X adc_ok=%d\n",
+        g_last_raw_i, g_last_raw_v,
+        g_last_b_i[0], g_last_b_i[1], g_last_b_i[2], g_last_b_i[3],
+        g_last_b_v[0], g_last_b_v[1], g_last_b_v[2], g_last_b_v[3],
+        (int)g_adc_ok
+      );
+    }
+  }
+#endif
 
   Serial.printf(
     "t=%llu ms state=%s fs=%.1f Vrms=%.3f Irms=%.3f P=%.3f PF=%.3f v1=%.3f i1=%.3f phi=%.2f THD_i=%.3f\n",

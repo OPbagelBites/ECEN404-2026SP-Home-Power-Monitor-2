@@ -30,7 +30,7 @@ static constexpr int   CFG_HARM_KMAX        = 5;
 static constexpr float CFG_THDV_PLACEHOLDER = 0.01f;
 
 // ================== Telemetry / Meta ==================
-static constexpr char  CFG_FW_TAG[]  = "fw-esp-0-1-0";
+static constexpr char  CFG_FW_TAG[]  = "fw-esp-0-1-1";
 static constexpr char  CFG_CAL_ID[]  = "cal-default";
 
 // Firebase
@@ -59,6 +59,33 @@ static constexpr uint8_t CFG_ADC_CH_V   = 1;
 // Reference voltage tied to 3V3 on your board
 static constexpr float   CFG_ADC_VREF_V = 3.3f;
 
-// SPI clock for ADS8344 (safe default)
+// SPI clock for ADS8344
 static constexpr uint32_t CFG_ADC_SPI_HZ = 2000000;
+
+// Debug knobs
+static constexpr bool CFG_ADC_DEBUG_RAW_BYTES   = true;   // print raw SPI bytes periodically
+static constexpr bool CFG_ADC_DEBUG_SKIP_DC_REM = false;   // leave raw DC bias in place while debugging
+static constexpr bool CFG_ADC_USE_DUMMY_READ    = false;   // throw away first conversion after channel select
+
+// ADS8344 command bits
+// Command format: S A2 A1 A0 S/D PD1 PD0
+static constexpr uint8_t CFG_ADC_CMD_START      = 0x80;   // bit 7
+static constexpr uint8_t CFG_ADC_CMD_SINGLE_EN  = 0x04;   // S/D = 1
+static constexpr uint8_t CFG_ADC_CMD_PD_ALWAYS  = 0x03;   // PD1=1 PD0=1 keep powered/reference on
+
+// ================== Calibration ==================
+static constexpr float CFG_V_BIAS_V        = 1.65f;
+static constexpr float CFG_I_BIAS_V        = 1.65f;
+
+// Real-world scaling factors.
+// These convert post-ADC volts into real units after DC removal.
+//
+// Example meaning:
+// if 0.010 V RMS at ADC corresponds to 120 V RMS real mains,
+// then CFG_V_SCALE = 120 / 0.010 = 12000.
+//
+// if 0.020 V RMS at ADC corresponds to 5.0 A RMS real current,
+// then CFG_I_SCALE = 5.0 / 0.020 = 250.
+static constexpr float CFG_V_SCALE         = 113.85f;   // replace after first calibration
+static constexpr float CFG_I_SCALE         = 1.0f;   // replace after first calibration
 #endif
