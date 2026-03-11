@@ -87,5 +87,5 @@ static constexpr float CFG_I_BIAS_V        = 1.65f;
 // if 0.020 V RMS at ADC corresponds to 5.0 A RMS real current,
 // then CFG_I_SCALE = 5.0 / 0.020 = 250.
 static constexpr float CFG_V_SCALE         = 113.85f;   // replace after first calibration
-static constexpr float CFG_I_SCALE         = 1.0f;   // replace after first calibration
+static constexpr float CFG_I_SCALE         = 0.43f;   // replace after first calibration
 #endif
