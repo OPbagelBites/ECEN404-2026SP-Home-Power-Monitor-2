@@ -3,8 +3,6 @@
 
 // ================== Build / Feature Flags ==================
 #ifndef TEST_MODE
-// 1 = generate synthetic V/I (SIM)
-// 0 = read real samples from external ADC (ADS8344 on PCB)
 #define TEST_MODE 0
 #endif
 
@@ -49,43 +47,28 @@ static constexpr char  CFG_CAL_ID[]  = "cal-default";
 
 // ================== External ADC (ADS8344) ==================
 #if !TEST_MODE
-// CS is IO27 per your PCB
-static constexpr int   CFG_ADC_CS_PIN   = 27;
+static constexpr int      CFG_ADC_CS_PIN   = 27;
+static constexpr uint32_t CFG_ADC_SPI_HZ   = 1000000;
+static constexpr uint8_t  CFG_ADC_SPI_MODE = SPI_MODE0;
 
-// ADS8344: CH0 = Current, CH1 = Voltage per your schematic
-static constexpr uint8_t CFG_ADC_CH_I   = 0;
-static constexpr uint8_t CFG_ADC_CH_V   = 1;
+// CH0 = current, CH1 = voltage
+static constexpr uint8_t  CFG_ADC_CMD_CH_I = 0x84;
+static constexpr uint8_t  CFG_ADC_CMD_CH_V = 0xC4;
 
-// Reference voltage tied to 3V3 on your board
-static constexpr float   CFG_ADC_VREF_V = 3.3f;
+// Debug controls
+static constexpr bool     CFG_ADC_DEBUG_SINGLE_CH = false;
+static constexpr uint8_t  CFG_ADC_DEBUG_FORCE_CMD = CFG_ADC_CMD_CH_V;
+static constexpr bool     CFG_ADC_DEBUG_SKIP_DC_REM = false;
+static constexpr bool     CFG_ADC_DEBUG_RAW_BYTES   = false;
 
-// SPI clock for ADS8344
-static constexpr uint32_t CFG_ADC_SPI_HZ = 2000000;
+// Reference voltage
+static constexpr float    CFG_ADC_VREF_V = 3.3f;
 
-// Debug knobs
-static constexpr bool CFG_ADC_DEBUG_RAW_BYTES   = true;   // print raw SPI bytes periodically
-static constexpr bool CFG_ADC_DEBUG_SKIP_DC_REM = false;   // leave raw DC bias in place while debugging
-static constexpr bool CFG_ADC_USE_DUMMY_READ    = false;   // throw away first conversion after channel select
+// Calibration
+static constexpr float CFG_V_BIAS_V = 1.65f;
+static constexpr float CFG_I_BIAS_V = 1.65f;
 
-// ADS8344 command bits
-// Command format: S A2 A1 A0 S/D PD1 PD0
-static constexpr uint8_t CFG_ADC_CMD_START      = 0x80;   // bit 7
-static constexpr uint8_t CFG_ADC_CMD_SINGLE_EN  = 0x04;   // S/D = 1
-static constexpr uint8_t CFG_ADC_CMD_PD_ALWAYS  = 0x03;   // PD1=1 PD0=1 keep powered/reference on
-
-// ================== Calibration ==================
-static constexpr float CFG_V_BIAS_V        = 1.65f;
-static constexpr float CFG_I_BIAS_V        = 1.65f;
-
-// Real-world scaling factors.
-// These convert post-ADC volts into real units after DC removal.
-//
-// Example meaning:
-// if 0.010 V RMS at ADC corresponds to 120 V RMS real mains,
-// then CFG_V_SCALE = 120 / 0.010 = 12000.
-//
-// if 0.020 V RMS at ADC corresponds to 5.0 A RMS real current,
-// then CFG_I_SCALE = 5.0 / 0.020 = 250.
-static constexpr float CFG_V_SCALE         = 113.85f;   // replace after first calibration
-static constexpr float CFG_I_SCALE         = 0.43f;   // replace after first calibration
+// Real-world scaling factors
+static constexpr float CFG_V_SCALE  = 113.85f;
+static constexpr float CFG_I_SCALE  = 0.43f;
 #endif

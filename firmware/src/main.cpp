@@ -25,16 +25,16 @@ static constexpr float        F0              = CFG_F0_HZ;
 static constexpr const char*  WINDOW_NAME     = CFG_WINDOW_NAME;
 static constexpr float        FRAME_PERIOD_MS = CFG_FRAME_PERIOD_S * 1000.0f;
 
-static constexpr float ON_DURATION_S   = CFG_ON_DURATION_S;
-static constexpr float OFF_DURATION_S  = CFG_OFF_DURATION_S;
+static constexpr float ON_DURATION_S    = CFG_ON_DURATION_S;
+static constexpr float OFF_DURATION_S   = CFG_OFF_DURATION_S;
 
-static constexpr float I_RMS_OFF       = CFG_I_RMS_OFF_A;
-static constexpr float I_RMS_ON        = CFG_I_RMS_ON_A;
-static constexpr float PHASE_DEG       = CFG_PHASE_DEG;
+static constexpr float I_RMS_OFF        = CFG_I_RMS_OFF_A;
+static constexpr float I_RMS_ON         = CFG_I_RMS_ON_A;
+static constexpr float PHASE_DEG        = CFG_PHASE_DEG;
 
-static constexpr float H2_OFF          = CFG_H2_OFF;
-static constexpr float H2_ON           = CFG_H2_ON;
-static constexpr float V_RMS_TARGET    = CFG_V_RMS_TARGET;
+static constexpr float H2_OFF           = CFG_H2_OFF;
+static constexpr float H2_ON            = CFG_H2_ON;
+static constexpr float V_RMS_TARGET     = CFG_V_RMS_TARGET;
 
 static constexpr float THDV_PLACEHOLDER = CFG_THDV_PLACEHOLDER;
 
@@ -77,10 +77,24 @@ static float    prev_p            = NAN;
 
 #if !TEST_MODE
 static bool g_adc_ok = false;
+
 static uint16_t g_last_raw_i = 0;
 static uint16_t g_last_raw_v = 0;
-static uint8_t g_last_b_i[4] = {0,0,0,0};
-static uint8_t g_last_b_v[4] = {0,0,0,0};
+static uint8_t  g_last_b_i[4] = {0,0,0,0};
+static uint8_t  g_last_b_v[4] = {0,0,0,0};
+
+static uint16_t g_raw_i_min = 65535;
+static uint16_t g_raw_i_max = 0;
+static uint16_t g_raw_v_min = 65535;
+static uint16_t g_raw_v_max = 0;
+
+static uint32_t g_raw_i_zero_count = 0;
+static uint32_t g_raw_i_full_count = 0;
+static uint32_t g_raw_v_zero_count = 0;
+static uint32_t g_raw_v_full_count = 0;
+
+static float g_vrms_adc_pre_scale = 0.0f;
+static float g_irms_adc_pre_scale = 0.0f;
 #endif
 
 namespace {
@@ -95,9 +109,15 @@ inline void update_on_off_state() {
   const uint32_t off_ms = (uint32_t)lroundf(OFF_DURATION_S * 1000.0f);
 
   if (state_on) {
-    if (elapsed >= on_ms) { state_on = false; state_switched_ms = now_ms(); }
+    if (elapsed >= on_ms) {
+      state_on = false;
+      state_switched_ms = now_ms();
+    }
   } else {
-    if (elapsed >= off_ms) { state_on = true; state_switched_ms = now_ms(); }
+    if (elapsed >= off_ms) {
+      state_on = true;
+      state_switched_ms = now_ms();
+    }
   }
 }
 
@@ -112,44 +132,38 @@ inline void dc_remove(std::vector<float>& x) {
 #if !TEST_MODE
 static SPIClass* adcSPI = &SPI;
 
-static inline uint8_t ads8344_build_ctrl(uint8_t ch) {
-  // ADS8344 command format: S A2 A1 A0 S/D PD1 PD0
-  return (uint8_t)(
-      CFG_ADC_CMD_START
-    | ((ch & 0x07) << 4)
-    | CFG_ADC_CMD_SINGLE_EN
-    | CFG_ADC_CMD_PD_ALWAYS
-  );
-}
-
-static inline uint16_t ads8344_extract_raw(uint8_t b1, uint8_t b2, uint8_t b3) {
-  // Temporary alignment assumption:
-  // use the last 16 bits clocked out after command transfer.
-  // If needed later, this is the one place to change.
-  return (uint16_t)(((uint16_t)b2 << 8) | b3);
-}
-
-static inline uint16_t ads8344_read_once(uint8_t ch, uint8_t out_bytes[4]) {
-  const uint8_t ctrl = ads8344_build_ctrl(ch);
-
+// Other team's known-good style:
+// read 3 bytes and assemble result as:
+// ((byte1 & 0x7F) << 9) | (byte2 << 1) | (byte3 >> 7)
+static inline uint16_t ads8344_read_command(uint8_t command, uint8_t out_bytes[4]) {
   digitalWrite(CFG_ADC_CS_PIN, LOW);
-  out_bytes[0] = adcSPI->transfer(ctrl);
-  out_bytes[1] = adcSPI->transfer(0x00);
-  out_bytes[2] = adcSPI->transfer(0x00);
-  out_bytes[3] = adcSPI->transfer(0x00);
+  adcSPI->beginTransaction(SPISettings(CFG_ADC_SPI_HZ, MSBFIRST, CFG_ADC_SPI_MODE));
+
+  adcSPI->transfer(command);
+
+  uint8_t byte1 = adcSPI->transfer(0x00);
+  uint8_t byte2 = adcSPI->transfer(0x00);
+  uint8_t byte3 = adcSPI->transfer(0x00);
+
+  adcSPI->endTransaction();
   digitalWrite(CFG_ADC_CS_PIN, HIGH);
 
-  return ads8344_extract_raw(out_bytes[1], out_bytes[2], out_bytes[3]);
+  out_bytes[0] = byte1;
+  out_bytes[1] = byte2;
+  out_bytes[2] = byte3;
+  out_bytes[3] = 0;
+
+  return (uint16_t)((((uint16_t)(byte1 & 0x7F)) << 9) |
+                    (((uint16_t) byte2) << 1) |
+                    (((uint16_t) byte3) >> 7));
 }
 
-static inline uint16_t ads8344_read_ch(uint8_t ch, uint8_t out_bytes[4]) {
+// Throw away the first conversion, keep the second.
+// This is the main fix.
+static inline uint16_t ads8344_read_valid(uint8_t command, uint8_t out_bytes[4]) {
   uint8_t throwaway[4] = {0,0,0,0};
-
-  if (CFG_ADC_USE_DUMMY_READ) {
-    (void)ads8344_read_once(ch, throwaway);
-  }
-
-  return ads8344_read_once(ch, out_bytes);
+  (void)ads8344_read_command(command, throwaway);
+  return ads8344_read_command(command, out_bytes);
 }
 
 static inline float raw_to_volts(uint16_t raw) {
@@ -172,10 +186,7 @@ static inline bool adc_samples_look_valid(
 
   const float vspan = vmax - vmin;
   const float ispan = imax - imin;
-
-  // Simple sanity rule:
-  // if both channels are nearly perfectly flat, something is wrong.
-  return (vspan > 0.002f) || (ispan > 0.002f);
+  return (vspan > 0.0005f) || (ispan > 0.0005f);
 }
 
 static inline float sample_ads8344_block(std::vector<float>& v_out, std::vector<float>& i_out) {
@@ -184,7 +195,15 @@ static inline float sample_ads8344_block(std::vector<float>& v_out, std::vector<
 
   const uint32_t t_start = micros();
 
-  adcSPI->beginTransaction(SPISettings(CFG_ADC_SPI_HZ, MSBFIRST, SPI_MODE0));
+  g_raw_i_min = 65535;
+  g_raw_i_max = 0;
+  g_raw_v_min = 65535;
+  g_raw_v_max = 0;
+
+  g_raw_i_zero_count = 0;
+  g_raw_i_full_count = 0;
+  g_raw_v_zero_count = 0;
+  g_raw_v_full_count = 0;
 
   for (uint32_t n = 0; n < N; ++n) {
     while ((int32_t)(micros() - t_next) < 0) {}
@@ -193,21 +212,40 @@ static inline float sample_ads8344_block(std::vector<float>& v_out, std::vector<
     uint8_t bi[4] = {0,0,0,0};
     uint8_t bv[4] = {0,0,0,0};
 
-    const uint16_t ci = ads8344_read_ch(CFG_ADC_CH_I, bi);
-    const uint16_t cv = ads8344_read_ch(CFG_ADC_CH_V, bv);
+    uint16_t ci = 0;
+    uint16_t cv = 0;
+
+    if (CFG_ADC_DEBUG_SINGLE_CH) {
+      const uint16_t cforced = ads8344_read_valid(CFG_ADC_DEBUG_FORCE_CMD, bv);
+      cv = cforced;
+      ci = cforced;
+      for (int k = 0; k < 4; ++k) bi[k] = bv[k];
+    } else {
+      ci = ads8344_read_valid(CFG_ADC_CMD_CH_I, bi);
+      cv = ads8344_read_valid(CFG_ADC_CMD_CH_V, bv);
+    }
 
     g_last_raw_i = ci;
     g_last_raw_v = cv;
+
     for (int k = 0; k < 4; ++k) {
       g_last_b_i[k] = bi[k];
       g_last_b_v[k] = bv[k];
     }
 
+    if (ci < g_raw_i_min) g_raw_i_min = ci;
+    if (ci > g_raw_i_max) g_raw_i_max = ci;
+    if (cv < g_raw_v_min) g_raw_v_min = cv;
+    if (cv > g_raw_v_max) g_raw_v_max = cv;
+
+    if (ci == 0)     ++g_raw_i_zero_count;
+    if (ci == 65535) ++g_raw_i_full_count;
+    if (cv == 0)     ++g_raw_v_zero_count;
+    if (cv == 65535) ++g_raw_v_full_count;
+
     i_out[n] = raw_to_volts(ci);
     v_out[n] = raw_to_volts(cv);
   }
-
-  adcSPI->endTransaction();
 
   const uint32_t t_end = micros();
   if (t_end > t_start) return (1e6f * (float)N) / (float)(t_end - t_start);
@@ -220,7 +258,6 @@ static inline float sample_ads8344_block(std::vector<float>& v_out, std::vector<
 void setup() {
   Serial.begin(115200);
   delay(200);
-  Serial.println("BOOT START");
 
   window.assign(N, 0.0f);
   dsp::hann(window);
@@ -231,11 +268,13 @@ void setup() {
 #if !TEST_MODE
   pinMode(CFG_ADC_CS_PIN, OUTPUT);
   digitalWrite(CFG_ADC_CS_PIN, HIGH);
-  adcSPI->begin(/*SCLK*/ 18, /*MISO*/ 19, /*MOSI*/ 23, /*SS*/ CFG_ADC_CS_PIN);
+  adcSPI->begin(/*SCLK*/18, /*MISO*/19, /*MOSI*/23, /*SS*/CFG_ADC_CS_PIN);
+  {
+    uint8_t dump[4];
+    ads8344_read_command(CFG_ADC_CMD_CH_I, dump);
+    ads8344_read_command(CFG_ADC_CMD_CH_V, dump);
+  }
 #endif
-
-  Serial.println(F("{\"boot\":\"ok\"}"));
-  Serial.println(F("{\"wifi\":\"connecting\"}"));
 
   if (wifi_init()) {
     Serial.print(F("{\"wifi\":\"ok\",\"ip\":\""));
@@ -278,23 +317,30 @@ void loop() {
     h3_amp = h4_amp = h5_amp = 0.0f;
   }
 
-  signals::vi_test_signals(FS_CFG, N, V_RMS_TARGET, irms_target, F0, phase_deg,
-                           h2_amp, h3_amp, h4_amp, h5_amp, v, i);
+  signals::vi_test_signals(
+    FS_CFG, N, V_RMS_TARGET, irms_target, F0, phase_deg,
+    h2_amp, h3_amp, h4_amp, h5_amp, v, i
+  );
 #else
   fs_eff = sample_ads8344_block(v, i);
 
-// Remove DC bias so the DSP sees only the AC waveform
-dc_remove(v);
-dc_remove(i);
+  if (!CFG_ADC_DEBUG_SKIP_DC_REM) {
+    dc_remove(v);
+    dc_remove(i);
+  }
 
-// Convert ADC-side waveform volts into real-world units
-for (uint32_t n = 0; n < N; ++n) {
-  v[n] *= CFG_V_SCALE;   // now in real volts
-  i[n] *= CFG_I_SCALE;   // now in real amps
-}
+  g_vrms_adc_pre_scale = dsp::rms(v.data(), N);
+  g_irms_adc_pre_scale = dsp::rms(i.data(), N);
+
+  for (uint32_t n = 0; n < N; ++n) {
+    v[n] *= CFG_V_SCALE;
+    i[n] *= CFG_I_SCALE;
+  }
 #endif
 
-  for (uint32_t n = 0; n < N; ++n) i_win[n] = i[n] * window[n];
+  for (uint32_t n = 0; n < N; ++n) {
+    i_win[n] = i[n] * window[n];
+  }
 
   const float Vrms = dsp::rms(v.data(), N);
   const float Irms = dsp::rms(i.data(), N);
@@ -331,8 +377,10 @@ for (uint32_t n = 0; n < N; ++n) {
 
   if (isnan(prev_irms)) prev_irms = Irms;
   if (isnan(prev_p))    prev_p    = P;
+
   const float d_irms = Irms - prev_irms;
   const float d_p    = P    - prev_p;
+
   prev_irms = Irms;
   prev_p    = P;
 
@@ -408,8 +456,26 @@ for (uint32_t n = 0; n < N; ++n) {
   dbg["v_src"] = "ADS8344_CH1";
   dbg["i_src"] = "ADS8344_CH0";
   dbg["adc_ok_runtime"] = g_adc_ok;
-  dbg["raw_i"] = g_last_raw_i;
-  dbg["raw_v"] = g_last_raw_v;
+
+  dbg["single_ch_mode"] = CFG_ADC_DEBUG_SINGLE_CH;
+  dbg["forced_ch"] = CFG_ADC_DEBUG_SINGLE_CH ? CFG_ADC_DEBUG_FORCE_CMD : 0;
+  dbg["spi_mode"] = (int)CFG_ADC_SPI_MODE;
+
+  dbg["raw_i_last"] = g_last_raw_i;
+  dbg["raw_v_last"] = g_last_raw_v;
+
+  dbg["raw_i_min"] = g_raw_i_min;
+  dbg["raw_i_max"] = g_raw_i_max;
+  dbg["raw_v_min"] = g_raw_v_min;
+  dbg["raw_v_max"] = g_raw_v_max;
+
+  dbg["raw_i_zero_ct"] = g_raw_i_zero_count;
+  dbg["raw_i_full_ct"] = g_raw_i_full_count;
+  dbg["raw_v_zero_ct"] = g_raw_v_zero_count;
+  dbg["raw_v_full_ct"] = g_raw_v_full_count;
+
+  dbg["vrms_adc_pre_scale"] = g_vrms_adc_pre_scale;
+  dbg["irms_adc_pre_scale"] = g_irms_adc_pre_scale;
 
   JsonArray rawbi = dbg.createNestedArray("raw_bytes_i");
   JsonArray rawbv = dbg.createNestedArray("raw_bytes_v");
@@ -418,6 +484,7 @@ for (uint32_t n = 0; n < N; ++n) {
     rawbv.add(g_last_b_v[k]);
   }
 #endif
+
   dbg["fs_eff"] = fs_eff;
   dbg["v_min"]  = vmin;
   dbg["v_max"]  = vmax;
@@ -436,31 +503,6 @@ for (uint32_t n = 0; n < N; ++n) {
   serializeJson(doc, json);
 
   Serial.println(json);
-
-#if !TEST_MODE
-  if (CFG_ADC_DEBUG_RAW_BYTES) {
-    static uint32_t dbg_cnt = 0;
-    if ((dbg_cnt++ % 8) == 0) {
-      Serial.printf(
-        "[adc] raw_i=%u raw_v=%u bytes_i=%02X %02X %02X %02X bytes_v=%02X %02X %02X %02X adc_ok=%d\n",
-        g_last_raw_i, g_last_raw_v,
-        g_last_b_i[0], g_last_b_i[1], g_last_b_i[2], g_last_b_i[3],
-        g_last_b_v[0], g_last_b_v[1], g_last_b_v[2], g_last_b_v[3],
-        (int)g_adc_ok
-      );
-    }
-  }
-#endif
-
-  Serial.printf(
-    "t=%llu ms state=%s fs=%.1f Vrms=%.3f Irms=%.3f P=%.3f PF=%.3f v1=%.3f i1=%.3f phi=%.2f THD_i=%.3f\n",
-    (unsigned long long)t_ms,
-    state_str,
-    fs_eff,
-    Vrms, Irms, P, PF,
-    v1_rms, i1_rms, phi_deg,
-    THD_i
-  );
 
 #if CFG_PUSH_ENABLE
   if ((frame_id % CFG_PUSH_EVERY_N) == 0) {
