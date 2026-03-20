@@ -129,6 +129,17 @@ inline void dc_remove(std::vector<float>& x) {
   for (uint32_t n = 0; n < N; ++n) x[n] -= mf;
 }
 
+inline void patch_adc_dropouts(float* buffer, uint32_t size, float bias) {
+  float last_valid_sample = bias; 
+  for (uint32_t n = 0; n < size; ++n) {
+    if (buffer[n] == 0.0f) {
+      buffer[n] = last_valid_sample;
+    } else {
+      last_valid_sample = buffer[n];
+    }
+  }
+}
+
 #if !TEST_MODE
 static SPIClass* adcSPI = &SPI;
 
@@ -324,20 +335,62 @@ void loop() {
     h2_amp, h3_amp, h4_amp, h5_amp, v, i
   );
 #else
+  // 1. Collect raw samples (centered around 1.65V)
   fs_eff = sample_ads8344_block(v, i);
 
+  // 2. Patch the SPI dropouts BEFORE DC removal
+  patch_adc_dropouts(v.data(), N, 1.65f);
+  patch_adc_dropouts(i.data(), N, 1.65f);
+
+  // 3. Remove DC offset and scale
   if (!CFG_ADC_DEBUG_SKIP_DC_REM) {
     dc_remove(v);
     dc_remove(i);
   }
 
+  // Calculate pre-scale RMS for debugging
   g_vrms_adc_pre_scale = dsp::rms(v.data(), N);
   g_irms_adc_pre_scale = dsp::rms(i.data(), N);
 
+  // Apply scaling
   for (uint32_t n = 0; n < N; ++n) {
     v[n] *= CFG_V_SCALE;
     i[n] *= CFG_I_SCALE;
   }
+
+  // 4. Calculate Real Metrics
+  float Vrms = dsp::rms(v.data(), N);
+  float Irms = dsp::rms(i.data(), N);
+  
+  // Real Power (W) and Apparent Power (VA)
+  float P = dsp::real_power(v.data(), i.data(), N);
+  float S = Vrms * Irms;
+
+  // --- POLISH: 0W Deadband Logic ---
+  // If current is effectively zero, force readings to a clean 0
+  if (Irms < 0.01f) { 
+    P = 0.0f;
+    S = 0.0f;
+    Irms = 0.0f; 
+  }
+
+  // Safe Power Factor calculation
+  float PF = (S > 0.01f) ? (P / S) : 0.0f;
+
+  // Placeholder values for advanced metrics
+  const float v1_rms = 0.0f;
+  const float i1_rms = 0.0f;
+  const float phi_deg = 0.0f;
+  const float P1      = 0.0f;
+  const float Q1      = 0.0f;
+  const float S1      = 0.0f;
+  const float PF_disp = 0.0f;
+  const float THD_i = 0.0f;
+  const float THD_v = 0.0f;
+  float h_ratio[CFG_HARM_KMAX + 1] = {0};
+  double odd_sum = 0.0, even_sum = 0.0;
+  const float crest_i = 0.0f;
+  const float form_i  = 0.0f;
 #endif
 
   for (uint32_t n = 0; n < N; ++n) {
@@ -377,31 +430,6 @@ void loop() {
 
   const float crest_i = dsp::crest_factor(i.data(), N);
   const float form_i  = dsp::form_factor(i.data(), N);
-
-#else
-  const float Vrms = dsp::rms(v.data(), N);
-  const float Irms = dsp::rms(i.data(), N);
-
-  const float P  = 0.0f;
-  const float S  = 0.0f;
-  const float PF = 0.0f;
-
-  const float v1_rms = 0.0f;
-  const float i1_rms = 0.0f;
-  const float phi_deg = 0.0f;
-  const float P1      = 0.0f;
-  const float Q1      = 0.0f;
-  const float S1      = 0.0f;
-  const float PF_disp = 0.0f;
-
-  const float THD_i = 0.0f;
-  const float THD_v = 0.0f;
-
-  float h_ratio[CFG_HARM_KMAX + 1] = {0};
-  double odd_sum = 0.0, even_sum = 0.0;
-
-  const float crest_i = 0.0f;
-  const float form_i  = 0.0f;
 #endif
 
   if (isnan(prev_irms)) prev_irms = Irms;
