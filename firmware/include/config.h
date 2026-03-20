@@ -7,13 +7,13 @@
 #endif
 
 // ================== Signal / Frame Settings ==================
-static constexpr float     CFG_FS_HZ          = 4096.0f;
-static constexpr uint32_t  CFG_N_SAMPLES      = 1024;
+static constexpr float     CFG_FS_HZ          = 1000.0f;
+static constexpr uint32_t  CFG_N_SAMPLES      = 256;
 static constexpr float     CFG_F0_HZ          = 60.0f;
 static constexpr char      CFG_WINDOW_NAME[]  = "hann";
-static constexpr float     CFG_FRAME_PERIOD_S = 3.0f;
+static constexpr float     CFG_FRAME_PERIOD_S = 2.0f;
 
-// ================== Simulation Pattern (ON↔OFF) ==================
+// ================== Simulation Pattern ==================
 static constexpr float CFG_ON_DURATION_S   = 5.0f;
 static constexpr float CFG_OFF_DURATION_S  = 5.0f;
 static constexpr float CFG_I_RMS_OFF_A     = 3.0f;
@@ -28,7 +28,7 @@ static constexpr int   CFG_HARM_KMAX        = 5;
 static constexpr float CFG_THDV_PLACEHOLDER = 0.01f;
 
 // ================== Telemetry / Meta ==================
-static constexpr char  CFG_FW_TAG[]  = "fw-esp-0-1-1";
+static constexpr char  CFG_FW_TAG[]  = "fw-esp-0-1-1-adcdebug";
 static constexpr char  CFG_CAL_ID[]  = "cal-default";
 
 // Firebase
@@ -48,18 +48,19 @@ static constexpr char  CFG_CAL_ID[]  = "cal-default";
 // ================== External ADC (ADS8344) ==================
 #if !TEST_MODE
 static constexpr int      CFG_ADC_CS_PIN   = 27;
-static constexpr uint32_t CFG_ADC_SPI_HZ   = 1000000;
+static constexpr uint32_t CFG_ADC_SPI_HZ   = 100000;
 static constexpr uint8_t  CFG_ADC_SPI_MODE = SPI_MODE0;
 
+// ADS8344 command bytes with internal clock bit set
 // CH0 = current, CH1 = voltage
-static constexpr uint8_t  CFG_ADC_CMD_CH_I = 0x84;
-static constexpr uint8_t  CFG_ADC_CMD_CH_V = 0xC4;
+static constexpr uint8_t  CFG_ADC_CMD_CH_I = 0x8E;
+static constexpr uint8_t  CFG_ADC_CMD_CH_V = 0x9E;
 
 // Debug controls
-static constexpr bool     CFG_ADC_DEBUG_SINGLE_CH = false;
-static constexpr uint8_t  CFG_ADC_DEBUG_FORCE_CMD = CFG_ADC_CMD_CH_V;
-static constexpr bool     CFG_ADC_DEBUG_SKIP_DC_REM = false;
-static constexpr bool     CFG_ADC_DEBUG_RAW_BYTES   = false;
+static constexpr bool     CFG_ADC_DEBUG_SINGLE_CH   = true;
+static constexpr uint8_t  CFG_ADC_DEBUG_FORCE_CMD   = 0xCE;
+static constexpr bool     CFG_ADC_DEBUG_SKIP_DC_REM = true;
+static constexpr bool     CFG_ADC_DEBUG_RAW_BYTES   = true;
 
 // Reference voltage
 static constexpr float    CFG_ADC_VREF_V = 3.3f;
@@ -68,7 +69,7 @@ static constexpr float    CFG_ADC_VREF_V = 3.3f;
 static constexpr float CFG_V_BIAS_V = 1.65f;
 static constexpr float CFG_I_BIAS_V = 1.65f;
 
-// Real-world scaling factors
-static constexpr float CFG_V_SCALE  = 113.85f;
-static constexpr float CFG_I_SCALE  = 0.43f;
+// Debug scaling = unity
+static constexpr float CFG_V_SCALE  = 1.0f;
+static constexpr float CFG_I_SCALE  = 1.0f;
 #endif

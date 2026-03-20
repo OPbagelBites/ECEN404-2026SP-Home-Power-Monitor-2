@@ -132,37 +132,38 @@ inline void dc_remove(std::vector<float>& x) {
 #if !TEST_MODE
 static SPIClass* adcSPI = &SPI;
 
-// Other team's known-good style:
-// read 3 bytes and assemble result as:
-// ((byte1 & 0x7F) << 9) | (byte2 << 1) | (byte3 >> 7)
 static inline uint16_t ads8344_read_command(uint8_t command, uint8_t out_bytes[4]) {
-  digitalWrite(CFG_ADC_CS_PIN, LOW);
   adcSPI->beginTransaction(SPISettings(CFG_ADC_SPI_HZ, MSBFIRST, CFG_ADC_SPI_MODE));
+  
+  // 1. Pull CS Low
+  digitalWrite(CFG_ADC_CS_PIN, LOW);
+  
+  // 2. THE SETUP DELAY: Give the ADC's SPI logic time to stabilize
+  delayMicroseconds(2); 
 
+  // 3. Send the command byte
   adcSPI->transfer(command);
+  
+  // 4. THE CONVERSION DELAY: Wait for the internal clock to finish the 16-bit SAR process
+  // At FS=1kHz, we have plenty of time. 12-15us is very safe.
+  delayMicroseconds(12); 
 
-  uint8_t byte1 = adcSPI->transfer(0x00);
-  uint8_t byte2 = adcSPI->transfer(0x00);
-  uint8_t byte3 = adcSPI->transfer(0x00);
+  // 5. Read the 3 bytes (24 bits total)
+  out_bytes[0] = adcSPI->transfer(0x00);
+  out_bytes[1] = adcSPI->transfer(0x00);
+  out_bytes[2] = adcSPI->transfer(0x00);
 
-  adcSPI->endTransaction();
+  // 6. Release the bus
   digitalWrite(CFG_ADC_CS_PIN, HIGH);
+  adcSPI->endTransaction();
 
-  out_bytes[0] = byte1;
-  out_bytes[1] = byte2;
-  out_bytes[2] = byte3;
-  out_bytes[3] = 0;
-
-  return (uint16_t)((((uint16_t)(byte1 & 0x7F)) << 9) |
-                    (((uint16_t) byte2) << 1) |
-                    (((uint16_t) byte3) >> 7));
+  // Bit-shift logic (Correct for internal clock mode)
+  return (uint16_t)((((uint16_t)(out_bytes[0] & 0x7F)) << 9) | 
+                    (((uint16_t)out_bytes[1]) << 1) | 
+                    (((uint16_t)out_bytes[2]) >> 7));
 }
 
-// Throw away the first conversion, keep the second.
-// This is the main fix.
 static inline uint16_t ads8344_read_valid(uint8_t command, uint8_t out_bytes[4]) {
-  uint8_t throwaway[4] = {0,0,0,0};
-  (void)ads8344_read_command(command, throwaway);
   return ads8344_read_command(command, out_bytes);
 }
 
@@ -269,6 +270,7 @@ void setup() {
   pinMode(CFG_ADC_CS_PIN, OUTPUT);
   digitalWrite(CFG_ADC_CS_PIN, HIGH);
   adcSPI->begin(/*SCLK*/18, /*MISO*/19, /*MOSI*/23, /*SS*/CFG_ADC_CS_PIN);
+
   {
     uint8_t dump[4];
     ads8344_read_command(CFG_ADC_CMD_CH_I, dump);
@@ -342,6 +344,7 @@ void loop() {
     i_win[n] = i[n] * window[n];
   }
 
+#if TEST_MODE
   const float Vrms = dsp::rms(v.data(), N);
   const float Irms = dsp::rms(i.data(), N);
   const float P    = dsp::real_power(v.data(), i.data(), N);
@@ -374,6 +377,32 @@ void loop() {
 
   const float crest_i = dsp::crest_factor(i.data(), N);
   const float form_i  = dsp::form_factor(i.data(), N);
+
+#else
+  const float Vrms = dsp::rms(v.data(), N);
+  const float Irms = dsp::rms(i.data(), N);
+
+  const float P  = 0.0f;
+  const float S  = 0.0f;
+  const float PF = 0.0f;
+
+  const float v1_rms = 0.0f;
+  const float i1_rms = 0.0f;
+  const float phi_deg = 0.0f;
+  const float P1      = 0.0f;
+  const float Q1      = 0.0f;
+  const float S1      = 0.0f;
+  const float PF_disp = 0.0f;
+
+  const float THD_i = 0.0f;
+  const float THD_v = 0.0f;
+
+  float h_ratio[CFG_HARM_KMAX + 1] = {0};
+  double odd_sum = 0.0, even_sum = 0.0;
+
+  const float crest_i = 0.0f;
+  const float form_i  = 0.0f;
+#endif
 
   if (isnan(prev_irms)) prev_irms = Irms;
   if (isnan(prev_p))    prev_p    = P;
@@ -428,6 +457,12 @@ void loop() {
 
   doc["mode"] = TEST_MODE ? "SIM" : "REAL";
 
+#if !TEST_MODE
+  doc["debug_mode"] = "ADC_ISOLATION";
+  doc["adc_single_ch"] = CFG_ADC_DEBUG_SINGLE_CH;
+  doc["adc_forced_cmd"] = CFG_ADC_DEBUG_FORCE_CMD;
+#endif
+
   doc["h2_i_norm"] = h_ratio[2];
   doc["h3_i_norm"] = (CFG_HARM_KMAX >= 3) ? h_ratio[3] : 0.0f;
   doc["h4_i_norm"] = (CFG_HARM_KMAX >= 4) ? h_ratio[4] : 0.0f;
@@ -453,10 +488,15 @@ void loop() {
   dbg["v_src"] = "SIM";
   dbg["i_src"] = "SIM";
 #else
-  dbg["v_src"] = "ADS8344_CH1";
-  dbg["i_src"] = "ADS8344_CH0";
-  dbg["adc_ok_runtime"] = g_adc_ok;
+  if (CFG_ADC_DEBUG_SINGLE_CH) {
+    dbg["v_src"] = (CFG_ADC_DEBUG_FORCE_CMD == CFG_ADC_CMD_CH_V) ? "ADS8344_FORCED_CH_V" : "ADS8344_FORCED_CH_I";
+    dbg["i_src"] = (CFG_ADC_DEBUG_FORCE_CMD == CFG_ADC_CMD_CH_V) ? "ADS8344_FORCED_CH_V" : "ADS8344_FORCED_CH_I";
+  } else {
+    dbg["v_src"] = "ADS8344_CH1";
+    dbg["i_src"] = "ADS8344_CH0";
+  }
 
+  dbg["adc_ok_runtime"] = g_adc_ok;
   dbg["single_ch_mode"] = CFG_ADC_DEBUG_SINGLE_CH;
   dbg["forced_ch"] = CFG_ADC_DEBUG_SINGLE_CH ? CFG_ADC_DEBUG_FORCE_CMD : 0;
   dbg["spi_mode"] = (int)CFG_ADC_SPI_MODE;
