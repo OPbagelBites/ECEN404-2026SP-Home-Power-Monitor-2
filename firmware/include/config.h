@@ -53,13 +53,13 @@ static constexpr uint8_t  CFG_ADC_SPI_MODE = SPI_MODE0;
 
 // ADS8344 command bytes with internal clock bit set
 // CH0 = current, CH1 = voltage
-static constexpr uint8_t  CFG_ADC_CMD_CH_I = 0x8E;
-static constexpr uint8_t  CFG_ADC_CMD_CH_V = 0x9E;
+static constexpr uint8_t  CFG_ADC_CMD_CH_I = 0x84;
+static constexpr uint8_t  CFG_ADC_CMD_CH_V = 0xC4;
 
 // Debug controls
 static constexpr bool     CFG_ADC_DEBUG_SINGLE_CH   = true;
-static constexpr uint8_t  CFG_ADC_DEBUG_FORCE_CMD   = 0xCE;
-static constexpr bool     CFG_ADC_DEBUG_SKIP_DC_REM = true;
+static constexpr uint8_t  CFG_ADC_DEBUG_FORCE_CMD   = CFG_ADC_CMD_CH_V;
+static constexpr bool     CFG_ADC_DEBUG_SKIP_DC_REM = false;
 static constexpr bool     CFG_ADC_DEBUG_RAW_BYTES   = true;
 
 // Reference voltage
@@ -70,6 +70,6 @@ static constexpr float CFG_V_BIAS_V = 1.65f;
 static constexpr float CFG_I_BIAS_V = 1.65f;
 
 // Debug scaling = unity
-static constexpr float CFG_V_SCALE  = 1.0f;
+static constexpr float CFG_V_SCALE  = 201.0f;
 static constexpr float CFG_I_SCALE  = 1.0f;
 #endif
