@@ -57,7 +57,7 @@ static constexpr uint8_t  CFG_ADC_CMD_CH_I = 0x84;
 static constexpr uint8_t  CFG_ADC_CMD_CH_V = 0xC4;
 
 // Debug controls
-static constexpr bool     CFG_ADC_DEBUG_SINGLE_CH   = true;
+static constexpr bool     CFG_ADC_DEBUG_SINGLE_CH   = false;
 static constexpr uint8_t  CFG_ADC_DEBUG_FORCE_CMD   = CFG_ADC_CMD_CH_V;
 static constexpr bool     CFG_ADC_DEBUG_SKIP_DC_REM = false;
 static constexpr bool     CFG_ADC_DEBUG_RAW_BYTES   = true;
@@ -70,6 +70,6 @@ static constexpr float CFG_V_BIAS_V = 1.65f;
 static constexpr float CFG_I_BIAS_V = 1.65f;
 
 // Debug scaling = unity
-static constexpr float CFG_V_SCALE  = 201.0f;
-static constexpr float CFG_I_SCALE  = 1.0f;
+static constexpr float CFG_V_SCALE  = 123.7f;
+static constexpr float CFG_I_SCALE  = 18.8f;
 #endif
