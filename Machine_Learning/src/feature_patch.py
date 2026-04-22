@@ -19,7 +19,7 @@ from typing import Dict, Any
 
 
 # ---------------------------------------------------------------------------
-# 1.  Frame-level patch  (operates on a single Firebase frame dict)
+# 1.  Frame-level patch 
 # ---------------------------------------------------------------------------
 
 def patch_zero_features(frame: Dict[str, Any]) -> Dict[str, Any]:
@@ -44,9 +44,7 @@ def patch_zero_features(frame: Dict[str, Any]) -> Dict[str, Any]:
     peak = np.max(np.abs(i_samp))
     crest_i = float(peak / rms_from_samples) if rms_from_samples > 1e-9 else 0.0
 
-    # ── FFT (zero-pad to 128 for better frequency resolution) ────
-    # Raw: 32 samples → resolution ~31 Hz (too coarse)
-    # Padded: 128 samples → resolution ~7.8 Hz (good enough)
+    # ── FFT ───
     pad_len = max(128, len(i_samp))
     padded = np.zeros(pad_len)
     padded[: len(i_samp)] = i_samp
@@ -55,14 +53,14 @@ def patch_zero_features(frame: Dict[str, Any]) -> Dict[str, Any]:
     magnitudes = np.abs(fft_vals) * 2.0 / pad_len
     freqs = np.fft.rfftfreq(pad_len, d=1.0 / fs)
 
-    # Fundamental (closest bin to 60 Hz)
+    # Fundamental 
     fund_idx = int(np.argmin(np.abs(freqs - freq)))
     fund_mag = magnitudes[fund_idx]
 
-    # ── i1_rms  (RMS of fundamental component) ───────────────────
+    # ── i1_rms  ───────────────────
     i1_rms = float(fund_mag / np.sqrt(2)) if fund_mag > 1e-9 else 0.0
 
-    # ── Individual harmonics (relative to fundamental) ────────────
+    # ── Individual harmonics  ────────────
     harmonic_freqs = [120, 180, 240, 300]  # 2nd through 5th
     h_i: Dict[str, float] = {}
     h_mags_abs = []
@@ -114,7 +112,7 @@ def patch_zero_features(frame: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# 2.  DataFrame-level derived features  (operates on a pandas DataFrame)
+# 2.  DataFrame-level derived features  
 # ---------------------------------------------------------------------------
 
 def add_derived_features(df: pd.DataFrame) -> pd.DataFrame:
