@@ -1,0 +1,10 @@
+{
+  "subset_accuracy": 0.8037486218302095,
+  "f1_macro": 0.7219282778531033,
+  "n_samples": 4532,
+  "classes": [
+    "Fan",
+    "Hairdryer",
+    "Laptop"
+  ]
+}

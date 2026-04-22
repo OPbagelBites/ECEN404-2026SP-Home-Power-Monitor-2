@@ -9,17 +9,10 @@ from typing import List
 
 # Ordered list of feature names used by both the training script and the API.
 # These must match what the ESP / DSP pipeline computes per frame.
-MODEL_FEATURES: List[str] = [
-    "p",
-    "s",
-    "pf_true",
-    "rms_i",
-    "thd_i",
-    "crest_i",
-    "h2_i_norm",
-    "h3_i_norm",
-    "h4_i_norm",
-    "h5_i_norm",
+# In src/config.py
+MODEL_FEATURES = [
+    "p", "s", "var_p", "pf_true", "rms_i", "thd_i", "crest_i",
+    "h2_i_norm", "h3_i_norm", "h4_i_norm", "h5_i_norm",
 ]
 
 # ---------------------------------------------------------------------------
@@ -35,20 +28,34 @@ TARGET_LABEL: str = "appliance_type"
 #   1) The appliance names in your ESP TEST_MODE PROFILES[]
 #   2) The labels that appear in the "labels" array in Firebase frames
 MODEL_CLASSES: List[str] = [
-    "Air Conditioner",
+    #"Air Conditioner",
     "Compact Fluorescent Lamp",
     "Fan",
-    "Fridge",
+    #"Fridge",
     "Hairdryer",
     "Heater",
     "Incandescent Light Bulb",
     "Laptop",
     "Microwave",
     "Vacuum",
-    "Washing Machine",
+    #"Washing Machine",
+    "Curling Iron",
+]
+
+# MODEL_CLASSES = ["Hairdryer", "Laptop"]
+
+SINGLE_LABEL_CLASSES: List[str] = [
+    "Compact Fluorescent Lamp",
+    "Fan",
+    "Hairdryer",
+    "Incandescent Light Bulb",
+    "Laptop",
+    "Microwave",
+    "Vacuum",
+    "Curling Iron",
 ]
 
 # Path to the trained model file relative to the project root.
 # The multi-label training script can also save to this path so the API
 # continues to load models from a single well-known location.
-DEFAULT_MODEL_PATH: str = "models/appliance_model_rf.joblib"
+DEFAULT_MODEL_PATH = "models/appliance_processed_model_multi_trial.joblib"

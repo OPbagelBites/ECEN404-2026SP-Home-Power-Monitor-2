@@ -1,0 +1,251 @@
+MULTILABEL WORKFLOW CHEAT SHEET
+
+PROJECT ROOT:
+cd /Users/joshle/Desktop/home-power-monitor/Machine_Learning
+
+--------------------------------------------------
+1. CONVERT RAW RTDB FILES -> PROCESSED MULTILABEL JSON
+--------------------------------------------------
+
+GO TO:
+cd /Users/joshle/Desktop/home-power-monitor/Machine_Learning/data/scripts
+
+Hairdryer only:
+python convert_rtdb_to_multilabel.py \
+  --in ../real/raw_frames/HIGHEST_HAIRDRYER.json \
+  --out ../processed/hairdryer_only.json \
+  --labels "Hairdryer" \
+  --min-p 10
+
+Low hairdryer only:
+python convert_rtdb_to_multilabel.py \
+  --in ../real/raw_frames/LOWEST_HAIRDRYER.json \
+  --out ../processed/hairdryer_only_low.json \
+  --labels "Hairdryer" \
+  --min-p 10
+
+Laptop only:
+python convert_rtdb_to_multilabel.py \
+  --in ../real/raw_frames/LAPTOP_CHARGER.json \
+  --out ../processed/laptop_only.json \
+  --labels "Laptop" \
+  --min-p 10
+
+Laptop + high hairdryer:
+python convert_rtdb_to_multilabel.py \
+  --in ../real/raw_frames/HIGHEST_HAIRDRYER_AND_LAPTOP.json \
+  --out ../processed/Hhairdryer_laptop.json \
+  --labels "Laptop,Hairdryer" \
+  --min-p 10
+
+Laptop + low hairdryer:
+python convert_rtdb_to_multilabel.py \
+  --in ../real/raw_frames/LOWEST_HAIRDRYER_AND_LAPTOP.json \
+  --out ../processed/Lhairdryer_laptop.json \
+  --labels "Laptop,Hairdryer" \
+  --min-p 10
+
+Lamp / incandescent:
+python convert_rtdb_to_multilabel.py \
+  --in ../real/raw_frames/LAMP.json \
+  --out ../processed/incandescent_only.json \
+  --labels "Incandescent Light Bulb" \
+  --min-p 3
+
+NOTES:
+- DO NOT use --on-only because the state field is unreliable
+- Label names must exactly match MODEL_CLASSES
+- Use a lower --min-p for small loads like lamps
+
+--------------------------------------------------
+2. MERGE PROCESSED FILES INTO ONE DATASET
+--------------------------------------------------
+
+From data/scripts:
+
+python merge_json_datasets.py \
+  --base ../processed/appliance_features_multilabel_sim.json \
+  --add ../processed/laptop_only.json \
+  --out ../processed/tmp1.json
+
+python merge_json_datasets.py \
+  --base ../processed/tmp1.json \
+  --add ../processed/hairdryer_only.json \
+  --out ../processed/tmp2.json
+
+python merge_json_datasets.py \
+  --base ../processed/tmp2.json \
+  --add ../processed/hairdryer_only_low.json \
+  --out ../processed/tmp3.json
+
+python merge_json_datasets.py \
+  --base ../processed/tmp3.json \
+  --add ../processed/Lhairdryer_laptop.json \
+  --out ../processed/tmp4.json
+
+python merge_json_datasets.py \
+  --base ../processed/tmp4.json \
+  --add ../processed/Hhairdryer_laptop.json \
+  --out ../processed/tmp5.json
+
+python merge_json_datasets.py \
+  --base ../processed/tmp5.json \
+  --add ../processed/incandescent_only.json \
+  --out ../processed/appliance_features_multilabel_real_plus_old.json
+
+Optional cleanup:
+rm ../processed/tmp1.json ../processed/tmp2.json ../processed/tmp3.json ../processed/tmp4.json ../processed/tmp5.json
+
+--------------------------------------------------
+3. INSTALL MATCHING LOCAL VERSIONS
+--------------------------------------------------
+
+From Machine_Learning root:
+
+python -m pip install scikit-learn==1.5.2 joblib==1.4.2
+
+Verify:
+python -c "import sklearn, joblib; print(sklearn.__version__, joblib.__version__)"
+
+--------------------------------------------------
+4. TRAIN MULTILABEL MODEL
+--------------------------------------------------
+
+From Machine_Learning root:
+
+python -m src.modeling.train_multilabel \
+  --data_path data/processed/appliance_features_multilabel_real_plus_old.json \
+  --model_output_path models/appliance_model_multilabel_real_plus_old.joblib
+
+IMPORTANT:
+- Run with python -m src.modeling.train_multilabel
+- Do not run python train_multilabel.py directly
+
+--------------------------------------------------
+5. VIEW TRAINING RESULTS
+--------------------------------------------------
+
+Metrics summary:
+python -m json.tool models/metrics_summary_multi.json
+
+Classification report:
+python -m json.tool models/classification_report_multi.json
+
+Confusion matrix json:
+python -m json.tool models/confusion_matrix_multi.json
+
+Open confusion matrix image on Mac:
+open models/confusion_matrix_multi.png
+
+--------------------------------------------------
+6. RUN API LOCALLY
+--------------------------------------------------
+
+From Machine_Learning root:
+
+python -m flask --app api run --host 0.0.0.0 --port 5001
+
+Check local health:
+curl http://127.0.0.1:5001/health
+
+Test local predict:
+curl -X POST http://127.0.0.1:5001/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "p": 143,
+    "pf_true": 0.894,
+    "rms_i": 1.32,
+    "s": 160,
+    "thd_i": 0,
+    "crest_i": 0,
+    "h2_i_norm": 0,
+    "h3_i_norm": 0,
+    "h4_i_norm": 0,
+    "h5_i_norm": 0
+  }'
+
+--------------------------------------------------
+7. REDEPLOY CLOUD RUN
+--------------------------------------------------
+
+From Machine_Learning root:
+
+gcloud run deploy ohm-ml-api \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated
+
+Check deployed health:
+curl https://ohm-ml-api-145071919363.us-central1.run.app/health
+
+--------------------------------------------------
+8. CHECK CLOUD RUN IF BROKEN
+--------------------------------------------------
+
+Service status:
+gcloud run services describe ohm-ml-api --region us-central1
+
+Logs:
+gcloud run services logs read ohm-ml-api --region us-central1 --limit 100
+
+--------------------------------------------------
+9. REDEPLOY FIREBASE FUNCTION IF index.js CHANGED
+--------------------------------------------------
+
+From Firebase project root:
+
+firebase deploy --only functions
+
+Only the ML trigger:
+firebase deploy --only functions:predictOnNewFrame
+
+--------------------------------------------------
+10. IMPORTANT FILES TO REMEMBER
+--------------------------------------------------
+
+Training:
+src/modeling/train_multilabel.py
+src/modeling/train_singlelabel.py
+
+API:
+api.py
+
+Config:
+src/config.py
+
+Model artifacts:
+models/
+- appliance_model_multilabel_real_plus_old.joblib
+- thresholds_multi.json
+- metrics_summary_multi.json
+- classification_report_multi.json
+- confusion_matrix_multi.json
+- confusion_matrix_multi.png
+
+Converters / merge:
+data/scripts/convert_rtdb_to_multilabel.py
+data/scripts/merge_json_datasets.py
+
+Processed datasets:
+data/processed/
+
+Raw RTDB frame files:
+data/real/raw_frames/
+
+Firebase trigger:
+functions/index.js
+
+RTDB path:
+ /devices/{deviceId}/streams/{fw}/frames/{frameId}
+
+--------------------------------------------------
+11. IMPORTANT GOTCHAS
+--------------------------------------------------
+
+- state field is unreliable right now
+- do not use --on-only on current real files
+- p / pf_true should be normalized with abs in functions/index.js
+- use lower min-p for tiny loads like lamp
+- label strings must exactly match MODEL_CLASSES
+- sklearn/joblib version in local training must match Cloud Run serving
+- if Cloud Run returns 503, check logs for model/version mismatch

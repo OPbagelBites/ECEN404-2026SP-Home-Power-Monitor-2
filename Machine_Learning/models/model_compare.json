@@ -1,0 +1,1190 @@
+{
+  "model_a": "models/appliance_processed_model_multi.joblib",
+  "model_b": "models/appliance_processed_model_multi_trial.joblib",
+  "metrics_a": {
+    "subset_accuracy": 0.6339364518976169,
+    "f1_macro": 0.5849784377461953,
+    "per_class": {
+      "Fan": {
+        "precision": 0.7539267015706806,
+        "recall": 0.7397260273972602,
+        "f1-score": 0.7467588591184097,
+        "support": 584.0
+      },
+      "Hairdryer": {
+        "precision": 0.9828693790149893,
+        "recall": 0.9062191510365252,
+        "f1-score": 0.9429892141756548,
+        "support": 1013.0
+      },
+      "Laptop": {
+        "precision": 0.09270216962524655,
+        "recall": 0.05026737967914439,
+        "f1-score": 0.0651872399445215,
+        "support": 935.0
+      },
+      "micro avg": {
+        "precision": 0.6936444885799404,
+        "recall": 0.55173775671406,
+        "f1-score": 0.61460624725033,
+        "support": 2532.0
+      },
+      "macro avg": {
+        "precision": 0.6098327500703055,
+        "recall": 0.5654041860376432,
+        "f1-score": 0.5849784377461953,
+        "support": 2532.0
+      },
+      "weighted avg": {
+        "precision": 0.6013492903866774,
+        "recall": 0.55173775671406,
+        "f1-score": 0.5735802989862626,
+        "support": 2532.0
+      },
+      "samples avg": {
+        "precision": 0.291078258311268,
+        "recall": 0.258053839364519,
+        "f1-score": 0.26603412768461315,
+        "support": 2532.0
+      }
+    }
+  },
+  "metrics_b": {
+    "subset_accuracy": 0.8938658428949691,
+    "f1_macro": 0.856010452392348,
+    "per_class": {
+      "Fan": {
+        "precision": 0.9721362229102167,
+        "recall": 0.5376712328767124,
+        "f1-score": 0.6923925027563396,
+        "support": 584.0
+      },
+      "Hairdryer": {
+        "precision": 0.9893048128342246,
+        "recall": 0.9131293188548865,
+        "f1-score": 0.9496919917864476,
+        "support": 1013.0
+      },
+      "Laptop": {
+        "precision": 0.9820143884892086,
+        "recall": 0.8759358288770054,
+        "f1-score": 0.9259468626342566,
+        "support": 935.0
+      },
+      "micro avg": {
+        "precision": 0.9837476099426387,
+        "recall": 0.8127962085308057,
+        "f1-score": 0.8901384083044983,
+        "support": 2532.0
+      },
+      "macro avg": {
+        "precision": 0.9811518080778834,
+        "recall": 0.7755787935362014,
+        "f1-score": 0.856010452392348,
+        "support": 2532.0
+      },
+      "weighted avg": {
+        "precision": 0.9826527578270324,
+        "recall": 0.8127962085308057,
+        "f1-score": 0.8815780117900488,
+        "support": 2532.0
+      },
+      "samples avg": {
+        "precision": 0.3795233892321271,
+        "recall": 0.3702559576345984,
+        "f1-score": 0.3732715504560165,
+        "support": 2532.0
+      }
+    }
+  },
+  "prediction_differences": [
+    {
+      "index": 3,
+      "event_id": 3,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 10,
+      "event_id": 10,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [
+        "Fan",
+        "Laptop"
+      ],
+      "model_b": [
+        "Fan"
+      ]
+    },
+    {
+      "index": 13,
+      "event_id": 13,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 16,
+      "event_id": 16,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 17,
+      "event_id": 17,
+      "true": [],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 21,
+      "event_id": 21,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 23,
+      "event_id": 23,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Hairdryer"
+      ]
+    },
+    {
+      "index": 28,
+      "event_id": 28,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 35,
+      "event_id": 35,
+      "true": [],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 40,
+      "event_id": 40,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 41,
+      "event_id": 41,
+      "true": [
+        "Fan",
+        "Laptop"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 43,
+      "event_id": 43,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Fan"
+      ]
+    },
+    {
+      "index": 45,
+      "event_id": 45,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 53,
+      "event_id": 53,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 54,
+      "event_id": 54,
+      "true": [
+        "Hairdryer"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Hairdryer"
+      ]
+    },
+    {
+      "index": 57,
+      "event_id": 57,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 61,
+      "event_id": 61,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 63,
+      "event_id": 63,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 67,
+      "event_id": 67,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 68,
+      "event_id": 68,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 78,
+      "event_id": 78,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 80,
+      "event_id": 80,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 85,
+      "event_id": 85,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 91,
+      "event_id": 91,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 92,
+      "event_id": 92,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 96,
+      "event_id": 96,
+      "true": [
+        "Fan",
+        "Laptop"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 99,
+      "event_id": 99,
+      "true": [],
+      "model_a": [
+        "Hairdryer"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 101,
+      "event_id": 101,
+      "true": [],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 111,
+      "event_id": 111,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 114,
+      "event_id": 114,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 117,
+      "event_id": 117,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 125,
+      "event_id": 125,
+      "true": [
+        "Fan",
+        "Hairdryer"
+      ],
+      "model_a": [
+        "Fan",
+        "Hairdryer"
+      ],
+      "model_b": [
+        "Hairdryer"
+      ]
+    },
+    {
+      "index": 129,
+      "event_id": 129,
+      "true": [],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 130,
+      "event_id": 130,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 133,
+      "event_id": 133,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 136,
+      "event_id": 136,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 137,
+      "event_id": 137,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 138,
+      "event_id": 138,
+      "true": [],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 142,
+      "event_id": 142,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [
+        "Fan",
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 144,
+      "event_id": 144,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 146,
+      "event_id": 146,
+      "true": [
+        "Fan",
+        "Hairdryer"
+      ],
+      "model_a": [
+        "Fan",
+        "Hairdryer"
+      ],
+      "model_b": [
+        "Hairdryer"
+      ]
+    },
+    {
+      "index": 148,
+      "event_id": 148,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 165,
+      "event_id": 165,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 167,
+      "event_id": 167,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 169,
+      "event_id": 169,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 172,
+      "event_id": 172,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 173,
+      "event_id": 173,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 176,
+      "event_id": 176,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 178,
+      "event_id": 178,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 183,
+      "event_id": 183,
+      "true": [],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 185,
+      "event_id": 185,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 186,
+      "event_id": 186,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 188,
+      "event_id": 188,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 191,
+      "event_id": 191,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 193,
+      "event_id": 193,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 194,
+      "event_id": 194,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 196,
+      "event_id": 196,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 198,
+      "event_id": 198,
+      "true": [
+        "Fan",
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 199,
+      "event_id": 199,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 202,
+      "event_id": 202,
+      "true": [
+        "Hairdryer",
+        "Laptop"
+      ],
+      "model_a": [
+        "Hairdryer"
+      ],
+      "model_b": [
+        "Hairdryer",
+        "Laptop"
+      ]
+    },
+    {
+      "index": 203,
+      "event_id": 203,
+      "true": [
+        "Hairdryer"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Hairdryer"
+      ]
+    },
+    {
+      "index": 208,
+      "event_id": 208,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 211,
+      "event_id": 211,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 215,
+      "event_id": 215,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 218,
+      "event_id": 218,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 219,
+      "event_id": 219,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 221,
+      "event_id": 221,
+      "true": [
+        "Fan",
+        "Laptop"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": [
+        "Fan",
+        "Laptop"
+      ]
+    },
+    {
+      "index": 225,
+      "event_id": 225,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 229,
+      "event_id": 229,
+      "true": [
+        "Hairdryer"
+      ],
+      "model_a": [
+        "Fan",
+        "Hairdryer"
+      ],
+      "model_b": [
+        "Hairdryer"
+      ]
+    },
+    {
+      "index": 230,
+      "event_id": 230,
+      "true": [
+        "Hairdryer"
+      ],
+      "model_a": [
+        "Hairdryer",
+        "Laptop"
+      ],
+      "model_b": [
+        "Hairdryer"
+      ]
+    },
+    {
+      "index": 238,
+      "event_id": 238,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 241,
+      "event_id": 241,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 251,
+      "event_id": 251,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 252,
+      "event_id": 252,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 253,
+      "event_id": 253,
+      "true": [
+        "Fan",
+        "Laptop"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": [
+        "Fan",
+        "Laptop"
+      ]
+    },
+    {
+      "index": 255,
+      "event_id": 255,
+      "true": [
+        "Hairdryer"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Hairdryer"
+      ]
+    },
+    {
+      "index": 256,
+      "event_id": 256,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 258,
+      "event_id": 258,
+      "true": [
+        "Hairdryer",
+        "Laptop"
+      ],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": [
+        "Hairdryer",
+        "Laptop"
+      ]
+    },
+    {
+      "index": 259,
+      "event_id": 259,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 260,
+      "event_id": 260,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 261,
+      "event_id": 261,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 262,
+      "event_id": 262,
+      "true": [
+        "Fan",
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 267,
+      "event_id": 267,
+      "true": [],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 269,
+      "event_id": 269,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 276,
+      "event_id": 276,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 280,
+      "event_id": 280,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Fan"
+      ]
+    },
+    {
+      "index": 281,
+      "event_id": 281,
+      "true": [
+        "Hairdryer"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Hairdryer"
+      ]
+    },
+    {
+      "index": 282,
+      "event_id": 282,
+      "true": [
+        "Hairdryer"
+      ],
+      "model_a": [
+        "Hairdryer"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 288,
+      "event_id": 288,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 291,
+      "event_id": 291,
+      "true": [],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 292,
+      "event_id": 292,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 297,
+      "event_id": 297,
+      "true": [],
+      "model_a": [
+        "Fan",
+        "Laptop"
+      ],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 301,
+      "event_id": 301,
+      "true": [
+        "Hairdryer"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Hairdryer"
+      ]
+    },
+    {
+      "index": 307,
+      "event_id": 307,
+      "true": [
+        "Fan"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 311,
+      "event_id": 311,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 318,
+      "event_id": 318,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 319,
+      "event_id": 319,
+      "true": [
+        "Hairdryer"
+      ],
+      "model_a": [
+        "Hairdryer",
+        "Laptop"
+      ],
+      "model_b": []
+    },
+    {
+      "index": 320,
+      "event_id": 320,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [
+        "Fan"
+      ],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 330,
+      "event_id": 330,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [],
+      "model_b": [
+        "Laptop"
+      ]
+    },
+    {
+      "index": 331,
+      "event_id": 331,
+      "true": [
+        "Laptop"
+      ],
+      "model_a": [
+        "Laptop"
+      ],
+      "model_b": [
+        "Hairdryer"
+      ]
+    }
+  ]
+}

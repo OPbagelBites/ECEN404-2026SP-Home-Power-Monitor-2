@@ -1,0 +1,296 @@
+[
+  {
+    "labels": [
+      "Hairdryer"
+    ],
+    "event_id": "147",
+    "frame_key": "-Opce-x9t31-Rr6oXJm9",
+    "device_id": "esp32-devkitc-01",
+    "stream_id": "fw-esp-0-1-1-adcdebug",
+    "p": 1420.066,
+    "s": 1435.891,
+    "var_p": 212.5923788027222,
+    "pf_true": 0.989,
+    "rms_v": 114.353,
+    "rms_i": 12.557,
+    "thd_i": 0.0,
+    "crest_i": 0.0,
+    "h2_i_norm": 0.0,
+    "h3_i_norm": 0.0,
+    "h4_i_norm": 0.0,
+    "h5_i_norm": 0.0
+  },
+  {
+    "labels": [
+      "Hairdryer"
+    ],
+    "event_id": "151",
+    "frame_key": "-Opce1jLXVbaec8JM4zB",
+    "device_id": "esp32-devkitc-01",
+    "stream_id": "fw-esp-0-1-1-adcdebug",
+    "p": 1432.151,
+    "s": 1447.764,
+    "var_p": 212.0474307672686,
+    "pf_true": 0.989,
+    "rms_v": 114.862,
+    "rms_i": 12.604,
+    "thd_i": 0.0,
+    "crest_i": 0.0,
+    "h2_i_norm": 0.0,
+    "h3_i_norm": 0.0,
+    "h4_i_norm": 0.0,
+    "h5_i_norm": 0.0
+  },
+  {
+    "labels": [
+      "Hairdryer"
+    ],
+    "event_id": "152",
+    "frame_key": "-Opce2DgKEF7uG_tZrJM",
+    "device_id": "esp32-devkitc-01",
+    "stream_id": "fw-esp-0-1-1-adcdebug",
+    "p": 1434.403,
+    "s": 1449.994,
+    "var_p": 212.06280585477455,
+    "pf_true": 0.989,
+    "rms_v": 114.962,
+    "rms_i": 12.613,
+    "thd_i": 0.0,
+    "crest_i": 0.0,
+    "h2_i_norm": 0.0,
+    "h3_i_norm": 0.0,
+    "h4_i_norm": 0.0,
+    "h5_i_norm": 0.0
+  },
+  {
+    "labels": [
+      "Hairdryer"
+    ],
+    "event_id": "153",
+    "frame_key": "-Opce2hxmfJYkcrXPQiA",
+    "device_id": "esp32-devkitc-01",
+    "stream_id": "fw-esp-0-1-1-adcdebug",
+    "p": 1435.133,
+    "s": 1450.824,
+    "var_p": 212.79932163190816,
+    "pf_true": 0.989,
+    "rms_v": 114.988,
+    "rms_i": 12.617,
+    "thd_i": 0.0,
+    "crest_i": 0.0,
+    "h2_i_norm": 0.0,
+    "h3_i_norm": 0.0,
+    "h4_i_norm": 0.0,
+    "h5_i_norm": 0.0
+  },
+  {
+    "labels": [
+      "Hairdryer"
+    ],
+    "event_id": "157",
+    "frame_key": "-Opce4f1i7cHA1B0yOXx",
+    "device_id": "esp32-devkitc-01",
+    "stream_id": "fw-esp-0-1-1-adcdebug",
+    "p": 1434.164,
+    "s": 1449.82,
+    "var_p": 212.4891844400558,
+    "pf_true": 0.989,
+    "rms_v": 114.881,
+    "rms_i": 12.62,
+    "thd_i": 0.0,
+    "crest_i": 0.0,
+    "h2_i_norm": 0.0,
+    "h3_i_norm": 0.0,
+    "h4_i_norm": 0.0,
+    "h5_i_norm": 0.0
+  },
+  {
+    "labels": [
+      "Hairdryer"
+    ],
+    "event_id": "158",
+    "frame_key": "-Opce59VR7N7vhCjeAme",
+    "device_id": "esp32-devkitc-01",
+    "stream_id": "fw-esp-0-1-1-adcdebug",
+    "p": 1434.528,
+    "s": 1450.246,
+    "var_p": 212.93867129293372,
+    "pf_true": 0.989,
+    "rms_v": 114.866,
+    "rms_i": 12.626,
+    "thd_i": 0.0,
+    "crest_i": 0.0,
+    "h2_i_norm": 0.0,
+    "h3_i_norm": 0.0,
+    "h4_i_norm": 0.0,
+    "h5_i_norm": 0.0
+  },
+  {
+    "labels": [
+      "Hairdryer"
+    ],
+    "event_id": "159",
+    "frame_key": "-Opce5doOiI16Ppz07Uh",
+    "device_id": "esp32-devkitc-01",
+    "stream_id": "fw-esp-0-1-1-adcdebug",
+    "p": 1434.151,
+    "s": 1449.745,
+    "var_p": 212.06478779844562,
+    "pf_true": 0.989,
+    "rms_v": 114.847,
+    "rms_i": 12.623,
+    "thd_i": 0.0,
+    "crest_i": 0.0,
+    "h2_i_norm": 0.0,
+    "h3_i_norm": 0.0,
+    "h4_i_norm": 0.0,
+    "h5_i_norm": 0.0
+  },
+  {
+    "labels": [
+      "Hairdryer"
+    ],
+    "event_id": "163",
+    "frame_key": "-Opce7aApaiiEi1c3Ip3",
+    "device_id": "esp32-devkitc-01",
+    "stream_id": "fw-esp-0-1-1-adcdebug",
+    "p": 1427.892,
+    "s": 1443.649,
+    "var_p": 212.71312027470114,
+    "pf_true": 0.989,
+    "rms_v": 114.571,
+    "rms_i": 12.6,
+    "thd_i": 0.0,
+    "crest_i": 0.0,
+    "h2_i_norm": 0.0,
+    "h3_i_norm": 0.0,
+    "h4_i_norm": 0.0,
+    "h5_i_norm": 0.0
+  },
+  {
+    "labels": [
+      "Hairdryer"
+    ],
+    "event_id": "164",
+    "frame_key": "-Opce85xuArpN1zbCvye",
+    "device_id": "esp32-devkitc-01",
+    "stream_id": "fw-esp-0-1-1-adcdebug",
+    "p": 1427.026,
+    "s": 1442.743,
+    "var_p": 212.37739845143494,
+    "pf_true": 0.989,
+    "rms_v": 114.519,
+    "rms_i": 12.598,
+    "thd_i": 0.0,
+    "crest_i": 0.0,
+    "h2_i_norm": 0.0,
+    "h3_i_norm": 0.0,
+    "h4_i_norm": 0.0,
+    "h5_i_norm": 0.0
+  },
+  {
+    "labels": [
+      "Hairdryer"
+    ],
+    "event_id": "165",
+    "frame_key": "-Opce8ZZ7AYgEdPFAoyq",
+    "device_id": "esp32-devkitc-01",
+    "stream_id": "fw-esp-0-1-1-adcdebug",
+    "p": 1424.351,
+    "s": 1440.129,
+    "var_p": 212.59295717403134,
+    "pf_true": 0.989,
+    "rms_v": 114.431,
+    "rms_i": 12.585,
+    "thd_i": 0.0,
+    "crest_i": 0.0,
+    "h2_i_norm": 0.0,
+    "h3_i_norm": 0.0,
+    "h4_i_norm": 0.0,
+    "h5_i_norm": 0.0
+  },
+  {
+    "labels": [
+      "Hairdryer"
+    ],
+    "event_id": "169",
+    "frame_key": "-OpceAZGE7WnuE6kc6E3",
+    "device_id": "esp32-devkitc-01",
+    "stream_id": "fw-esp-0-1-1-adcdebug",
+    "p": 1417.166,
+    "s": 1433.006,
+    "var_p": 212.47758582965952,
+    "pf_true": 0.989,
+    "rms_v": 114.15,
+    "rms_i": 12.554,
+    "thd_i": 0.0,
+    "crest_i": 0.0,
+    "h2_i_norm": 0.0,
+    "h3_i_norm": 0.0,
+    "h4_i_norm": 0.0,
+    "h5_i_norm": 0.0
+  },
+  {
+    "labels": [
+      "Hairdryer"
+    ],
+    "event_id": "170",
+    "frame_key": "-OpceB25oGJ7ZGU8-kv4",
+    "device_id": "esp32-devkitc-01",
+    "stream_id": "fw-esp-0-1-1-adcdebug",
+    "p": 1416.716,
+    "s": 1432.72,
+    "var_p": 213.54712300567343,
+    "pf_true": 0.989,
+    "rms_v": 114.168,
+    "rms_i": 12.549,
+    "thd_i": 0.0,
+    "crest_i": 0.0,
+    "h2_i_norm": 0.0,
+    "h3_i_norm": 0.0,
+    "h4_i_norm": 0.0,
+    "h5_i_norm": 0.0
+  },
+  {
+    "labels": [
+      "Hairdryer"
+    ],
+    "event_id": "171",
+    "frame_key": "-OpceBWAloxVieba58yB",
+    "device_id": "esp32-devkitc-01",
+    "stream_id": "fw-esp-0-1-1-adcdebug",
+    "p": 1415.263,
+    "s": 1431.2,
+    "var_p": 212.98845234190597,
+    "pf_true": 0.989,
+    "rms_v": 114.098,
+    "rms_i": 12.544,
+    "thd_i": 0.0,
+    "crest_i": 0.0,
+    "h2_i_norm": 0.0,
+    "h3_i_norm": 0.0,
+    "h4_i_norm": 0.0,
+    "h5_i_norm": 0.0
+  },
+  {
+    "labels": [
+      "Hairdryer"
+    ],
+    "event_id": "175",
+    "frame_key": "-OpceDSomB1RzMO1CyNU",
+    "device_id": "esp32-devkitc-01",
+    "stream_id": "fw-esp-0-1-1-adcdebug",
+    "p": 1410.955,
+    "s": 1426.914,
+    "var_p": 212.8134191516133,
+    "pf_true": 0.989,
+    "rms_v": 113.961,
+    "rms_i": 12.521,
+    "thd_i": 0.0,
+    "crest_i": 0.0,
+    "h2_i_norm": 0.0,
+    "h3_i_norm": 0.0,
+    "h4_i_norm": 0.0,
+    "h5_i_norm": 0.0
+  }
+]

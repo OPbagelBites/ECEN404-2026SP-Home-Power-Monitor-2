@@ -1,0 +1,30 @@
+{
+  "accuracy": 0.9842931937172775,
+  "f1_macro": 0.9817726726091496,
+  "n_samples": 952,
+  "n_classes": 8,
+  "classes": [
+    "Compact Fluorescent Lamp",
+    "Fan",
+    "Hairdryer",
+    "Incandescent Light Bulb",
+    "Laptop",
+    "Microwave",
+    "Vacuum",
+    "Curling Iron"
+  ],
+  "features": [
+    "p",
+    "s",
+    "var_p",
+    "pf_true",
+    "rms_i",
+    "thd_i",
+    "crest_i",
+    "h2_i_norm",
+    "h3_i_norm",
+    "h4_i_norm",
+    "h5_i_norm"
+  ],
+  "target_label": "appliance_type"
+}
